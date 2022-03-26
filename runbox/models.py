@@ -22,11 +22,11 @@ class File(BaseModel):
 class DockerProfile(BaseModel):
     image: str
     workdir_mount: str
-    cmd: list[str]
     exec: str
+    user: str
 
-    def get_cmd(self, files: Sequence[File]) -> list[str]:
-        return [exec, *(file.name for file in files)]
+    def cmd(self, files: Sequence[File]) -> list[str]:
+        return [self.exec, *(file.name for file in files)]
 
 
 class Limits(BaseModel):

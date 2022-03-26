@@ -38,7 +38,7 @@ class DockerExecutor:
 
         config = {
             'Image': profile.image,
-            'Cmd': profile.cmd,
+            'Cmd': profile.cmd(files),
             'Volumes': {
                 workdir.name: {
                      'bind': profile.workdir_mount,
@@ -46,13 +46,13 @@ class DockerExecutor:
                 }
             },
             'WorkingDir': profile.workdir_mount,
-            'User': 'sandbox',
+            'User': profile.user,
             'AttachStdin': True,
             'AttachStdout': True,
             'AttachStderr': True,
             'Tty': False,
             'OpenStdin': True,
-            'StdinOnce': True,
+            'StdinOnce': False,
         }
 
         task = self.docker_client.containers.create(config, name=self.name_factory())
