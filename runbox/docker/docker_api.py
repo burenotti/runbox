@@ -1,80 +1,17 @@
 import asyncio
-import io
-import pathlib
-import tarfile
 import uuid
-import time
-from datetime import timedelta
-from typing import Awaitable, Callable, Literal, Sequence
+from typing import Callable, Sequence
 from aiodocker import Docker
 from aiodocker.containers import DockerContainer
 from aiodocker.volumes import DockerVolume
 from aiodocker.exceptions import DockerError
 from contextlib import asynccontextmanager, suppress
-from dataclasses import dataclass
+from runbox.models import File, Limits, DockerProfile
+from .utils import write_files
 
 __all__ = [
-    'DockerProfile',
-    'File',
-    'Limits',
     'DockerExecutor',
 ]
-
-
-@dataclass
-class File:
-    name: str
-    content: str | bytes
-    type: Literal["binary", "text"] = "text"
-
-    def content_bytes(self):
-        if self.type == 'binary':
-            return self.content
-        else:
-            return self.content.encode('utf-8')
-
-
-@dataclass
-class DockerProfile:
-    image: str
-    workdir_mount: str
-    cmd: list[str]
-
-
-@dataclass(frozen=True)
-class Limits:
-    time: timedelta = timedelta(seconds=1)
-    memory_mb: int = 64
-    cpu_count: int = 1
-    disk_space_mb: int = 256
-
-
-def create_tarball(files: Sequence[File]) -> io.BytesIO:
-    file_obj = io.BytesIO()
-    timestamp = time.time()
-    with tarfile.open(fileobj=file_obj, mode='w') as tarball:
-        for file in files:
-            content = file.content_bytes()
-
-            file_info = tarfile.TarInfo(file.name)
-            file_info.size = len(content)
-            file_info.mtime = timestamp
-
-            tarball.addfile(
-                tarinfo=file_info,
-                fileobj=io.BytesIO(content)
-            )
-
-    return file_obj
-
-
-async def write_files(
-    container: DockerContainer,
-    directory: pathlib.Path,
-    files: Sequence[File],
-) -> None:
-    tarball = create_tarball(files)
-    await container.put_archive(directory, tarball.getvalue())
 
 
 class DockerExecutor:
@@ -155,4 +92,3 @@ class DockerExecutor:
             if volume:
                 with suppress(DockerError):
                     await volume.delete()
-
