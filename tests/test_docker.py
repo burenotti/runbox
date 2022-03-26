@@ -3,9 +3,9 @@ import tarfile
 import aiodocker
 import pytest
 
-from runbox.docker.docker_api import(
-   DockerExecutor, create_tarball, File
-)
+from runbox.docker import DockerExecutor
+from runbox.docker.utils import create_tarball
+from runbox.models import DockerProfile, File
 
 
 @pytest.mark.asyncio
@@ -19,6 +19,28 @@ async def docker_client():
 @pytest.fixture
 async def docker_executor():
     return DockerExecutor()
+
+
+@pytest.fixture
+def python_sandbox_profile():
+    return DockerProfile(
+        image='python-sandbox:latest',
+        workdir_mount='/sandbox',
+        user='sandbox',
+        exec='python'
+    )
+
+
+@pytest.fixture
+def python_code_sample():
+    return [
+        File(
+            name='main.py',
+            content=(
+                r'print(f"Hello, World!")'
+            )
+        )
+    ]
 
 
 @pytest.mark.asyncio
@@ -82,3 +104,22 @@ def test_tarball_create_multiple_files():
         assert main_py == 'print("Hello, world!")'
         assert input_txt == 'important text!'
 
+
+@pytest.mark.asyncio
+async def test_code_running_no_input(
+    docker_client: aiodocker.Docker,
+    python_sandbox_profile: DockerProfile,
+    python_code_sample: list[File],
+    docker_executor: DockerExecutor,
+):
+    async with docker_executor.workdir() as workdir:
+        container = await docker_executor.create_container(
+            profile=python_sandbox_profile,
+            files=python_code_sample,
+            workdir=workdir,
+        )
+
+        await docker_executor.run(container)
+        await container.wait(timeout=5)
+        logs = await container.log(stdout=True)
+        assert logs == ['Hello, World!\n']
