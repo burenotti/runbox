@@ -2,7 +2,7 @@ import io
 import time
 import tarfile
 import pathlib
-from typing import Sequence
+from typing import Any, Sequence
 from aiodocker.docker import DockerContainer
 from runbox.models import *
 
@@ -39,3 +39,18 @@ async def write_files(
 ) -> None:
     tarball = create_tarball(files)
     await container.put_archive(directory, tarball.getvalue())
+
+
+def create_ulimit(name: str, soft: Any, hard: Any) -> dict[str, Any]:
+    return {'Name': name, 'Soft': soft, 'Hard': hard}
+
+
+def ulimits(limits: Limits):
+    return {
+        'cputime': create_ulimit(
+            'cputime',
+            limits.time.total_seconds(),
+            limits.time.total_seconds()
+        ),
+    }
+
