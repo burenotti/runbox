@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import io
 import tarfile
 import aiodocker
@@ -5,7 +6,7 @@ import pytest
 
 from runbox.docker import DockerExecutor
 from runbox.docker.utils import create_tarball
-from runbox.models import DockerProfile, File
+from runbox.models import DockerProfile, File, Limits
 
 
 @pytest.mark.asyncio
@@ -123,3 +124,29 @@ async def test_code_running_no_input(
         await container.wait(timeout=5)
         logs = await container.log(stdout=True)
         assert logs == ['Hello, World!\n']
+
+
+@pytest.mark.asyncio
+async def test_code_running_oom_kill(
+    docker_client: aiodocker.Docker,
+    docker_executor: DockerExecutor,
+    python_sandbox_profile,
+):
+    async with docker_executor.workdir() as workdir:
+        container = await docker_executor.create_container(
+            profile=python_sandbox_profile,
+            files=[
+                # allocating an array of an 10^9 elements must provide memory limit
+                File(name='main.py', content='a = [i for i in range(10**9)]')
+            ],
+            limits=Limits(
+                memory_mb=64
+            ),
+            workdir=workdir,
+        )
+        await container.start()
+        await container.wait()
+        container = await docker_client.containers.get(container.id)
+        state = container._container['State']
+        oom_killed = state['OOMKilled']
+        assert oom_killed, 'Must be killled because of out of memory'
