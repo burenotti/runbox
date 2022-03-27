@@ -7,7 +7,7 @@ from aiodocker.volumes import DockerVolume
 from aiodocker.exceptions import DockerError
 from contextlib import asynccontextmanager, suppress
 from runbox.models import File, Limits, DockerProfile
-from .utils import write_files
+from .utils import write_files, ulimits
 
 __all__ = [
     'DockerExecutor',
@@ -41,10 +41,12 @@ class DockerExecutor:
             'Cmd': profile.cmd(files),
             'Volumes': {
                 workdir.name: {
-                     'bind': profile.workdir_mount,
-                     'mode': 'rw'
+                    'bind': profile.workdir_mount,
+                    'mode': 'rw'
                 }
             },
+            'Ulimits': ulimits(limits),
+            'Memory': limits.memory_bytes,
             'WorkingDir': profile.workdir_mount,
             'User': profile.user,
             'AttachStdin': True,
@@ -53,9 +55,11 @@ class DockerExecutor:
             'Tty': False,
             'OpenStdin': True,
             'StdinOnce': False,
+            'OomKillDisable': False,
         }
 
-        task = self.docker_client.containers.create(config, name=self.name_factory())
+        task = self.docker_client.containers.create(
+            config, name=self.name_factory())
 
         container = await asyncio.wait_for(task, timeout)
 
