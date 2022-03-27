@@ -37,4 +37,4 @@ class Limits(BaseModel):
 
     @property
     def memory_bytes(self) -> int:
-        return self.memory_bytes * 1024**2
+        return self.memory_mb * 1024**2

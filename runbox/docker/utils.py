@@ -46,11 +46,11 @@ def create_ulimit(name: str, soft: Any, hard: Any) -> dict[str, Any]:
 
 
 def ulimits(limits: Limits):
-    return {
-        'cputime': create_ulimit(
-            'cputime',
-            limits.time.total_seconds(),
-            limits.time.total_seconds()
+    return [
+        create_ulimit(
+            'cpu',
+            int(limits.time.total_seconds()),
+            int(limits.time.total_seconds())
         ),
-    }
+    ]
 
