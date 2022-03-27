@@ -34,3 +34,7 @@ class Limits(BaseModel):
     memory_mb: int = 64
     cpu_count: int = 1
     disk_space_mb: int = 256
+
+    @property
+    def memory_bytes(self) -> int:
+        return self.memory_bytes * 1024**2
