@@ -138,27 +138,30 @@ async def test_code_running_with_input(
         File(
             name='main.py',
             content=(
-                'name = input("what is your name?\\n")\n'
-                r'print(f"Hello {name}")'
+                'name = input("What is your name?\\n")\n'
+                r'print(f"Hello, {name}")'
             )
         )
     ]
+
+    limits = Limits(time=timedelta(seconds=2))
 
     async with docker_executor.workdir() as workdir:
         container = await docker_executor.create_container(
             profile=python_sandbox_profile,
             files=files,
             workdir=workdir,
+            limits=limits,
         )
         stdin: aiohttp.ClientWebSocketResponse
-        stdin, _ = await container.run()
-        await stdin.send_str('Andrew\r\n')
+        stdin = await container.run()
+        await stdin.write_in(b'Andrew\n')
         await container.wait()
     logs = await container.log(stdout=True)
     state = await container.state()
-    await container._container.delete()
-    assert not state.cpu_limit and not state.memory_limit
-    assert logs == ['What is your name?\r\n', 'Hello, Andrew\r\n']
+    # await container._container.delete()
+    assert not state.cpu_limit and not state.memory_limit, state.duration
+    assert logs == ['What is your name?\n', 'Hello, Andrew\n']
 
 @pytest.mark.asyncio
 async def test_code_running_oom_kill(
