@@ -153,7 +153,7 @@ async def test_code_running_with_input(
             workdir=workdir,
             limits=limits,
         )
-        stdin: aiohttp.ClientWebSocketResponse
+
         stdin = await container.run()
         await stdin.write_in(b'Andrew\n')
         await container.wait()
