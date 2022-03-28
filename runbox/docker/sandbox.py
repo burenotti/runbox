@@ -75,15 +75,12 @@ class DockerSandbox:
 
         except asyncio.exceptions.TimeoutError:
             self._cpu_limit = True
-            await self._container.kill()
+            await self.kill()
 
     async def set_timeout(self):
         loop = asyncio.get_running_loop()
         waiter = self._container.wait(timeout=self._timeout)
         self._timeout_task = loop.create_task(waiter)
-
-    def __await__(self):
-        return self.wait().__await__()
 
     async def run(self) -> SandboxIO:
         await self._container.start()
@@ -106,6 +103,23 @@ class DockerSandbox:
 
     async def log(self, stdout: bool = False, stderr: bool = False) -> list[str]:
         return await self._container.log(stdout=stdout, stderr=stderr)
+
+    async def kill(self) -> None:
+        await self._container.kill()
+
+    async def delete(self, force: bool = False) -> None:
+        await self._container.delete(force=force)
+
+    def __await__(self):
+        return self.wait().__await__()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self):
+        await self.kill()
+        await self.delete()
+
 
 
 def create_sandbox_state(state: dict[str, Any]) -> SandboxState:
