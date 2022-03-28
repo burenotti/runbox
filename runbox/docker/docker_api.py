@@ -6,6 +6,7 @@ from aiodocker.containers import DockerContainer
 from aiodocker.volumes import DockerVolume
 from aiodocker.exceptions import DockerError
 from contextlib import asynccontextmanager, suppress
+from runbox.docker.sandbox import DockerSandbox
 from runbox.models import File, Limits, DockerProfile
 from .utils import write_files, ulimits
 
@@ -34,14 +35,14 @@ class DockerExecutor:
         workdir: DockerVolume,
         limits: Limits = Limits(),
         timeout: int = 5
-    ) -> DockerContainer:
+    ) -> DockerSandbox:
 
         config = {
             'Image': profile.image,
             'Cmd': profile.cmd(files),
             'Volumes': {
                 workdir.name: {
-                    'bind': profile.workdir_mount,
+                    'bind': str(profile.workdir_mount),
                     'mode': 'rw'
                 }
             },
@@ -49,7 +50,7 @@ class DockerExecutor:
             # 'StopSignal': 'SIGKILL',
             # 'Ulimits': ulimits(limits),
             'Memory': limits.memory_bytes,
-            'WorkingDir': profile.workdir_mount,
+            'WorkingDir': str(profile.workdir_mount),
             'User': profile.user,
             'AttachStdin': True,
             'AttachStdout': True,
@@ -59,9 +60,9 @@ class DockerExecutor:
             'StdinOnce': False,
             'OomKillDisable': False,
         }
-
+        name = self.name_factory()
         task = self.docker_client.containers.create(
-            config, name=self.name_factory())
+            config, name=name)
 
         container = await asyncio.wait_for(task, timeout)
 
@@ -71,10 +72,7 @@ class DockerExecutor:
             files=files,
         )
 
-        return container
-
-    async def run(self, container: DockerContainer):
-        await container.start()
+        return DockerSandbox(name, container, limits.time.total_seconds())
 
     @asynccontextmanager
     async def workdir(

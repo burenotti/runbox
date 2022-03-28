@@ -38,7 +38,7 @@ async def write_files(
     files: Sequence[File],
 ) -> None:
     tarball = create_tarball(files)
-    await container.put_archive(directory, tarball.getvalue())
+    await container.put_archive(str(directory), tarball.getvalue())
 
 
 def create_ulimit(name: str, soft: Any, hard: Any) -> dict[str, Any]:
