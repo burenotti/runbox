@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import io
 import tarfile
 import aiodocker
+import aiohttp
 import pytest
 
 from runbox.docker import DockerExecutor
@@ -120,11 +121,44 @@ async def test_code_running_no_input(
             workdir=workdir,
         )
 
-        await docker_executor.run(container)
-        await container.wait(timeout=5)
-        logs = await container.log(stdout=True)
-        assert logs == ['Hello, World!\n']
+        await container.run()
+        await container.wait()
 
+    logs = await container.log(stdout=True)
+    assert logs[0] in ('Hello, World!\r\n', 'Hello, World!\n')
+
+
+@pytest.mark.asyncio
+async def test_code_running_with_input(
+    docker_client: aiodocker.Docker,
+    python_sandbox_profile: DockerProfile,
+    docker_executor: DockerExecutor,
+):
+    files = [
+        File(
+            name='main.py',
+            content=(
+                'name = input("what is your name?\\n")\n'
+                r'print(f"Hello {name}")'
+            )
+        )
+    ]
+
+    async with docker_executor.workdir() as workdir:
+        container = await docker_executor.create_container(
+            profile=python_sandbox_profile,
+            files=files,
+            workdir=workdir,
+        )
+        stdin: aiohttp.ClientWebSocketResponse
+        stdin, _ = await container.run()
+        await stdin.send_str('Andrew\r\n')
+        await container.wait()
+    logs = await container.log(stdout=True)
+    state = await container.state()
+    await container._container.delete()
+    assert not state.cpu_limit and not state.memory_limit
+    assert logs == ['What is your name?\r\n', 'Hello, Andrew\r\n']
 
 @pytest.mark.asyncio
 async def test_code_running_oom_kill(
@@ -144,9 +178,38 @@ async def test_code_running_oom_kill(
             ),
             workdir=workdir,
         )
-        await container.start()
+        await container.run()
         await container.wait()
-        container = await docker_client.containers.get(container.id)
-        state = container._container['State']
-        oom_killed = state['OOMKilled']
-        assert oom_killed, 'Must be killled because of out of memory'
+
+    state = await container.state()
+    assert state.memory_limit
+
+
+@pytest.mark.asyncio
+async def test_code_timeout_kill(
+    docker_client: aiodocker.Docker,
+    docker_executor: DockerExecutor,
+    python_sandbox_profile,
+):
+    async with docker_executor.workdir() as workdir:
+        container = await docker_executor.create_container(
+            profile=python_sandbox_profile,
+            files=[
+                File(
+                    name='main.py',
+                    content=(
+                        'while True:\n'
+                        '    print("Hello, world!")'
+                    ),
+                )
+            ],
+            limits=Limits(
+                time=timedelta(seconds=3),
+                memory_mb=64,
+            ),
+            workdir=workdir,
+        )
+        await container.run()
+        await container.wait()
+        state = await container.state()
+    assert state.cpu_limit, 'Must be killled because of timeout'
