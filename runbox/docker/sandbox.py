@@ -1,7 +1,7 @@
-import aiohttp
 import asyncio
 from pydantic import BaseModel, Field
 from aiodocker.containers import DockerContainer
+from aiodocker.stream import Message, Stream
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 from runbox.docker.exceptions import SandboxError
@@ -37,17 +37,18 @@ class Sandbox(Protocol):
 
 class SandboxInput(Protocol):
 
-    async def send_bytes(self, send: bytes, compress: int | None = None) -> None:
+    async def write_in(self, send: bytes) -> None:
         ...
 
 
 class SandboxOutput(Protocol):
 
-    async def receive_bytes(self, *, timeout: float | None = None) -> bytes:
+    async def read_out(self) -> Message | None:
         ...
 
-    async def receive(self, timeout: float | None = None) -> aiohttp.WSMessage:
-        ...
+
+class SandboxIO(SandboxInput, SandboxOutput, Protocol):
+    ...
 
 
 class DockerSandbox:
@@ -63,8 +64,7 @@ class DockerSandbox:
         self._timeout = timeout
         self._cpu_limit: bool = False
         self._timeout_task: asyncio.Task | None = None
-        self._input: aiohttp.ClientWebSocketResponse | None = None
-        self._output: aiohttp.ClientWebSocketResponse | None = None
+        self._stream: Stream | None = None
 
     async def wait(self):
         try:
@@ -85,26 +85,17 @@ class DockerSandbox:
     def __await__(self):
         return self.wait().__await__()
 
-    async def run(self) -> tuple[SandboxInput, SandboxOutput]:
+    async def run(self) -> SandboxIO:
         await self._container.start()
 
-        sandbox_input: aiohttp.ClientWebSocketResponse
-        sandbox_output: aiohttp.ClientWebSocketResponse
-
-        sandbox_output = await self._container.websocket(
-            stdout=True, stderr=True, stream=True,
+        stream = self._container.attach(
+            stdin=True, stdout=True, stderr=True
         )
-
-        sandbox_input = await self._container.websocket(
-            stdin=True, stream=True,
-        )
+        self._stream = stream
 
         await self.set_timeout()
 
-        self._input = sandbox_input
-        self._output = sandbox_output
-
-        return sandbox_input, sandbox_output
+        return stream
 
     async def state(self) -> SandboxState:
         container_info = await self._container.docker.containers.get(self._container.id)
