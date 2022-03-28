@@ -1,3 +1,4 @@
+import pathlib
 from datetime import timedelta
 from pydantic import BaseModel
 from typing import Literal, Sequence
@@ -21,7 +22,7 @@ class File(BaseModel):
 
 class DockerProfile(BaseModel):
     image: str
-    workdir_mount: str
+    workdir_mount: pathlib.Path
     exec: str
     user: str
 
