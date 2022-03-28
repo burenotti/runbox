@@ -2,7 +2,6 @@ import asyncio
 import uuid
 from typing import Callable, Sequence
 from aiodocker import Docker
-from aiodocker.containers import DockerContainer
 from aiodocker.volumes import DockerVolume
 from aiodocker.exceptions import DockerError
 from contextlib import asynccontextmanager, suppress
@@ -46,9 +45,6 @@ class DockerExecutor:
                     'mode': 'rw'
                 }
             },
-            # 'CpuRealtimeRuntime': int(limits.time.total_seconds()) * 1000,
-            # 'StopSignal': 'SIGKILL',
-            # 'Ulimits': ulimits(limits),
             'Memory': limits.memory_bytes,
             'WorkingDir': str(profile.workdir_mount),
             'User': profile.user,
