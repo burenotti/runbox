@@ -2,7 +2,7 @@ import aiohttp
 import asyncio
 from pydantic import BaseModel, Field
 from aiodocker.containers import DockerContainer
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Protocol
 from runbox.docker.exceptions import SandboxError
 
@@ -14,6 +14,13 @@ class SandboxState(BaseModel):
     finished_at: datetime | None = Field(None, alias="FinishedAt")
     memory_limit: bool = Field(..., alias="OOMKilled")
     cpu_limit: bool = Field(..., alias="CpuLimit")
+
+    @property
+    def duration(self) -> timedelta:
+        if self.finished_at:
+            return self.finished_at - self.started_at
+        else:
+            return timedelta(seconds=-1)
 
 
 class Sandbox(Protocol):
@@ -39,6 +46,9 @@ class SandboxOutput(Protocol):
     async def receive_bytes(self, *, timeout: float | None = None) -> bytes:
         ...
 
+    async def receive(self, timeout: float | None = None) -> aiohttp.WSMessage:
+        ...
+
 
 class DockerSandbox:
 
@@ -51,6 +61,7 @@ class DockerSandbox:
         self.name = name
         self._container = container
         self._timeout = timeout
+        self._cpu_limit: bool = False
         self._timeout_task: asyncio.Task | None = None
         self._input: aiohttp.ClientWebSocketResponse | None = None
         self._output: aiohttp.ClientWebSocketResponse | None = None
@@ -62,12 +73,13 @@ class DockerSandbox:
 
             await self._timeout_task
 
-        except TimeoutError:
+        except asyncio.exceptions.TimeoutError:
+            self._cpu_limit = True
             await self._container.kill()
 
     async def set_timeout(self):
         loop = asyncio.get_running_loop()
-        waiter = self._container.wait(self._timeout)
+        waiter = self._container.wait(timeout=self._timeout)
         self._timeout_task = loop.create_task(waiter)
 
     def __await__(self):
@@ -79,13 +91,15 @@ class DockerSandbox:
         sandbox_input: aiohttp.ClientWebSocketResponse
         sandbox_output: aiohttp.ClientWebSocketResponse
 
-        sandbox_input = await self._container.websocket(
+        sandbox_output = await self._container.websocket(
             stdout=True, stderr=True, stream=True,
         )
 
-        sandbox_output = await self._container.websocket(
+        sandbox_input = await self._container.websocket(
             stdin=True, stream=True,
         )
+
+        await self.set_timeout()
 
         self._input = sandbox_input
         self._output = sandbox_output
@@ -93,10 +107,14 @@ class DockerSandbox:
         return sandbox_input, sandbox_output
 
     async def state(self) -> SandboxState:
-        container_info = await self._container.docker.get(self._container.id)
+        container_info = await self._container.docker.containers.get(self._container.id)
         state = container_info._container['State']
-        state["CpuLimit"] = getattr(self._timeout_task, 'cancelled', False)
+
+        state = {**state, 'CpuLimit': self._cpu_limit}
         return create_sandbox_state(state)
+
+    async def log(self, stdout: bool = False, stderr: bool = False) -> list[str]:
+        return await self._container.log(stdout=stdout, stderr=stderr)
 
 
 def create_sandbox_state(state: dict[str, Any]) -> SandboxState:
