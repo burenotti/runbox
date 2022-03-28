@@ -1,0 +1,2 @@
+class SandboxError(Exception):
+    pass
