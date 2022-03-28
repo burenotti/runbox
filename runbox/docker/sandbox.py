@@ -1,54 +1,12 @@
 import asyncio
-from pydantic import BaseModel, Field
+from typing import Any
+
 from aiodocker.containers import DockerContainer
-from aiodocker.stream import Message, Stream
-from datetime import datetime, timedelta
-from typing import Any, Protocol
+from aiodocker.stream import Stream
+
 from runbox.docker.exceptions import SandboxError
-
-
-class SandboxState(BaseModel):
-    status: str = Field(..., alias="Status")
-    exit_code: int | None = Field(None, alias="ExitCode")
-    started_at: datetime = Field(..., alias="StartedAt")
-    finished_at: datetime | None = Field(None, alias="FinishedAt")
-    memory_limit: bool = Field(..., alias="OOMKilled")
-    cpu_limit: bool = Field(..., alias="CpuLimit")
-
-    @property
-    def duration(self) -> timedelta:
-        if self.finished_at:
-            return self.finished_at - self.started_at
-        else:
-            return timedelta(seconds=-1)
-
-
-class Sandbox(Protocol):
-
-    async def run(self, stdin: bytes | None = None):
-        ...
-
-    async def wait(self, timeout: float = None):
-        ...
-
-    async def state(self) -> SandboxState:
-        ...
-
-
-class SandboxInput(Protocol):
-
-    async def write_in(self, send: bytes) -> None:
-        ...
-
-
-class SandboxOutput(Protocol):
-
-    async def read_out(self) -> Message | None:
-        ...
-
-
-class SandboxIO(SandboxInput, SandboxOutput, Protocol):
-    ...
+from runbox.models import SandboxState
+from runbox.proto import SandboxIO
 
 
 class DockerSandbox:
@@ -119,7 +77,6 @@ class DockerSandbox:
     async def __aexit__(self):
         await self.kill()
         await self.delete()
-
 
 
 def create_sandbox_state(state: dict[str, Any]) -> SandboxState:

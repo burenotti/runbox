@@ -1,10 +1,11 @@
 import pathlib
-from datetime import timedelta
-from pydantic import BaseModel
+from datetime import timedelta, datetime
+from pydantic import BaseModel, Field
 from typing import Literal, Sequence
 
 __all__ = [
-    'File', 'DockerProfile', 'Limits'
+    'File', 'DockerProfile',
+    'Limits', 'SandboxState'
 ]
 
 
@@ -39,3 +40,19 @@ class Limits(BaseModel):
     @property
     def memory_bytes(self) -> int:
         return self.memory_mb * 1024**2
+
+
+class SandboxState(BaseModel):
+    status: str = Field(..., alias="Status")
+    exit_code: int | None = Field(None, alias="ExitCode")
+    started_at: datetime = Field(..., alias="StartedAt")
+    finished_at: datetime | None = Field(None, alias="FinishedAt")
+    memory_limit: bool = Field(..., alias="OOMKilled")
+    cpu_limit: bool = Field(..., alias="CpuLimit")
+
+    @property
+    def duration(self) -> timedelta:
+        if self.finished_at:
+            return self.finished_at - self.started_at
+        else:
+            return timedelta(seconds=-1)
