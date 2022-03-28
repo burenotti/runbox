@@ -45,7 +45,9 @@ class DockerExecutor:
                     'mode': 'rw'
                 }
             },
-            'Ulimits': ulimits(limits),
+            # 'CpuRealtimeRuntime': int(limits.time.total_seconds()) * 1000,
+            # 'StopSignal': 'SIGKILL',
+            # 'Ulimits': ulimits(limits),
             'Memory': limits.memory_bytes,
             'WorkingDir': profile.workdir_mount,
             'User': profile.user,
