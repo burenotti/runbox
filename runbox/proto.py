@@ -16,6 +16,21 @@ class Sandbox(Protocol):
     async def state(self) -> SandboxState:
         ...
 
+    async def log(self, stdout: bool = False, stderr: bool = False) -> list[str]:
+        ...
+
+    async def kill(self) -> None:
+        ...
+
+    async def delete(self, force: bool = False) -> None:
+        ...
+
+    async def __aenter__(self):
+        ...
+
+    async def __aexit__(self, *_):
+        ...
+
 
 class SandboxInput(Protocol):
 
