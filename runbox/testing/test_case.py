@@ -1,5 +1,6 @@
 from .proto import TestResult, TestStatus
-from ..proto import Sandbox
+from ..models import SandboxState
+from ..proto import Sandbox, SandboxIO
 
 
 class IOTestCase:
@@ -7,7 +8,7 @@ class IOTestCase:
     def __init__(
         self,
         stdin: bytes | None = None,
-        expected_stout:  bytes | None = None,
+        expected_stout: bytes | None = None,
         expected_stderr: bytes | None = None,
         encoding: str = 'utf-8',
     ):
@@ -17,19 +18,29 @@ class IOTestCase:
         self.encoding = encoding
 
     async def exec(self, sandbox: Sandbox) -> TestResult:
+
+        reader = await sandbox.run(self.stdin)
+        stdout, stderr = await self._read_output(reader)
+
+        await sandbox.wait()
+
+        state = await sandbox.state()
+
+        return self._check(stdout, stderr, state)
+
+    @staticmethod
+    async def _read_output(reader: SandboxIO) -> tuple[bytes, bytes]:
         stdout = b''
         stderr = b''
-        reader = await sandbox.run(self.stdin)
         while message := await reader.read_out():
             if message.stream == 1:
                 stdout += message.data
             elif message.stream == 2:
                 stderr += message.data
 
-        await sandbox.wait()
+        return stdout, stderr
 
-        state = await sandbox.state()
-
+    def _check(self, stdout: bytes, stderr: bytes, state: SandboxState) -> TestResult:
         if (
             stdout == self.expected_stderr or not self.expected_stout and
             stderr == self.expected_stderr or not self.expected_stderr
@@ -52,4 +63,3 @@ class IOTestCase:
             why = "Memory limit has occurred"
 
         return TestResult(status=status, why=why)
-
