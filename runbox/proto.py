@@ -5,9 +5,25 @@ from aiodocker.stream import Message
 from runbox.models import SandboxState
 
 
+class SandboxInput(Protocol):
+
+    async def write_in(self, send: bytes) -> None:
+        ...
+
+
+class SandboxOutput(Protocol):
+
+    async def read_out(self) -> Message | None:
+        ...
+
+
+class SandboxIO(SandboxInput, SandboxOutput, Protocol):
+    ...
+
+
 class Sandbox(Protocol):
 
-    async def run(self, stdin: bytes | None = None):
+    async def run(self, stdin: bytes | None = None) -> SandboxIO:
         ...
 
     async def wait(self, timeout: float = None):
@@ -30,19 +46,3 @@ class Sandbox(Protocol):
 
     async def __aexit__(self, *_):
         ...
-
-
-class SandboxInput(Protocol):
-
-    async def write_in(self, send: bytes) -> None:
-        ...
-
-
-class SandboxOutput(Protocol):
-
-    async def read_out(self) -> Message | None:
-        ...
-
-
-class SandboxIO(SandboxInput, SandboxOutput, Protocol):
-    ...
