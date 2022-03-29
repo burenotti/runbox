@@ -1,6 +1,8 @@
 import asyncio
 from typing import Any
+from contextlib import suppress
 
+import aiodocker
 from aiodocker.containers import DockerContainer
 from aiodocker.stream import Stream
 
@@ -32,8 +34,9 @@ class DockerSandbox:
             await self._timeout_task
 
         except asyncio.exceptions.TimeoutError:
-            self._cpu_limit = True
-            await self.kill()
+            with suppress(aiodocker.DockerError):
+                await self.kill()
+                self._cpu_limit = True
 
     async def set_timeout(self):
         loop = asyncio.get_running_loop()
