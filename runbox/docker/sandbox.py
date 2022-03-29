@@ -40,13 +40,16 @@ class DockerSandbox:
         waiter = self._container.wait(timeout=self._timeout)
         self._timeout_task = loop.create_task(waiter)
 
-    async def run(self) -> SandboxIO:
+    async def run(self, stdin: bytes | None = None) -> SandboxIO:
         await self._container.start()
 
         stream = self._container.attach(
             stdin=True, stdout=True, stderr=True
         )
         self._stream = stream
+
+        if stdin:
+            await stream.write_in(stdin)
 
         await self.set_timeout()
 
@@ -74,8 +77,7 @@ class DockerSandbox:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self):
-        await self.kill()
+    async def __aexit__(self, *_):
         await self.delete()
 
 
