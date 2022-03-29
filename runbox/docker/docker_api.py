@@ -1,13 +1,15 @@
 import asyncio
 import uuid
-from typing import Callable, Sequence
-from aiodocker import Docker
-from aiodocker.volumes import DockerVolume
-from aiodocker.exceptions import DockerError
 from contextlib import asynccontextmanager, suppress
+from typing import Callable, Sequence
+
+from aiodocker import Docker
+from aiodocker.exceptions import DockerError
+from aiodocker.volumes import DockerVolume
+
 from runbox.docker.sandbox import DockerSandbox
 from runbox.models import File, Limits, DockerProfile
-from .utils import write_files, ulimits
+from .utils import write_files
 
 __all__ = [
     'DockerExecutor',
@@ -19,13 +21,12 @@ class DockerExecutor:
     def __init__(
         self,
         url: str = None,
-        name_factory: Callable[[], str] = None
+        name_factory: Callable[[], str] = None,
+        docker_client: Docker = None,
     ) -> None:
-        self.docker_client = Docker(url)
-        if name_factory:
-            self.name_factory = name_factory
-        else:
-            self.name_factory = lambda: str(uuid.uuid4())
+
+        self.docker_client = docker_client or Docker(url)
+        self.name_factory = name_factory or (lambda: str(uuid.uuid4()))
 
     async def create_container(
         self,
@@ -92,3 +93,6 @@ class DockerExecutor:
             if volume:
                 with suppress(DockerError):
                     await volume.delete()
+
+    async def close(self):
+        await self.docker_client.close()
