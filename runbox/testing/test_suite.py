@@ -18,8 +18,8 @@ class BaseTestSuite:
         self.profile = profile
         self.tests: list[TestCase] = []
 
-    def add_test(self, test: TestCase) -> BaseTestSuite:
-        self.tests.append(test)
+    def add_tests(self, *tests: TestCase) -> BaseTestSuite:
+        self.tests.extend(tests)
         return self
 
     def remove_test(self, test: TestCase) -> bool:

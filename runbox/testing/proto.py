@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Protocol
 
@@ -30,7 +32,7 @@ class TestCase(Protocol):
 
 class TestSuite(Protocol):
 
-    def add_test(self, test: TestCase):
+    def add_tests(self, *tests: TestCase) -> TestSuite:
         ...
 
     def remove_test(self, test: TestCase) -> bool:
