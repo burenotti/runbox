@@ -37,7 +37,7 @@ async def main():
     executor = runbox.DockerExecutor()
 
     # Workdir is a temporary volume, that provides you 
-    # a way to share date between a couple of containers.
+    # a way to share data between a couple of containers.
     # Volume will be deleted on exiting context manager
     async with executor.workdir() as workdir:
         container = await executor.create_container(
