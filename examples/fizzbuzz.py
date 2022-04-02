@@ -2,10 +2,14 @@ import asyncio
 from datetime import timedelta
 
 import runbox
-from runbox import DockerSandbox
 from runbox.models import (
     DockerProfile, Limits, File
 )
+from runbox.scoring import (
+    BaseScoringSystem, total_scoring,
+    proportional_unit_scoring
+)
+from runbox.testing import BaseTestSuite, IOTestCase
 
 profile = DockerProfile(
     image='python-sandbox:latest',
@@ -37,29 +41,32 @@ else:
 file = File(name='main.py', content=content)
 
 
-async def test_fizz_buzz(sandbox: DockerSandbox, number: int, expected_result: str):
-    reader = await sandbox.run(stdin=f'{number}\n'.encode('utf-8'))
-    await sandbox.wait()
-    result = await reader.read_out()
-    assert result.data.decode('utf-8') == expected_result
-
-
 async def main():
     executor = runbox.DockerExecutor()
+    test_suite = BaseTestSuite(profile, limits, [file])
+    test_suite.add_tests(
+        IOTestCase(b'15\n', b'FizzBuzz\n'),
+        IOTestCase(b'25\n', b'Buzz\n'),
+        IOTestCase(b'24\n', b'Fizz\n'),
+        IOTestCase(b'19\n', b'19\n'),
+        IOTestCase(b'12.3\n', b'')  # This case should always fail
+    )
+    results = await test_suite.exec(executor)
+    print("Test results:", *results, sep='\n')
 
-    async with executor.workdir() as workdir:
-        container = await executor.create_container(
-            profile=profile,
-            limits=limits,
-            files=[file],
-            workdir=workdir
-        )
+    scoring = BaseScoringSystem()
 
-        async with container as sandbox:
-            await test_fizz_buzz(sandbox, 25, 'Buzz\n')
-            await test_fizz_buzz(sandbox, 9, 'Fizz\n')
-            await test_fizz_buzz(sandbox, 15, 'FizzBuzz\n')
-            await test_fizz_buzz(sandbox, 13, '13\n')
+    ts = total_scoring(default=0, threshold=0)
+    us = proportional_unit_scoring(
+        tests_count=len(results),
+        max_score=100,
+        default=0,
+    )
+    scoring.set_total_scoring_strategy(ts)
+    scoring.set_unit_scoring_strategy(us)
+
+    score = await scoring.estimate(results)
+    print(f"This solution scored {score}/{100} points")
 
     await executor.close()
 
