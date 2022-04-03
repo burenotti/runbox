@@ -20,9 +20,10 @@ class IOTestCase:
     async def exec(self, sandbox: Sandbox) -> TestResult:
 
         reader = await sandbox.run(self.stdin)
-        stdout, stderr = await self._read_output(reader)
 
         await sandbox.wait()
+
+        stdout, stderr = await self._read_output(reader)
 
         state = await sandbox.state()
 

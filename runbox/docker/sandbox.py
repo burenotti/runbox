@@ -37,13 +37,21 @@ class DockerSandbox:
             with suppress(aiodocker.DockerError):
                 await self.kill()
                 self._cpu_limit = True
+        finally:
+            self._timeout_task = None
 
     async def set_timeout(self):
         loop = asyncio.get_running_loop()
         waiter = self._container.wait(timeout=self._timeout)
+
+        if self._timeout_task is not None:
+            raise SandboxError("Container is already running")
+
         self._timeout_task = loop.create_task(waiter)
 
     async def run(self, stdin: bytes | None = None) -> SandboxIO:
+        self._cpu_limit = False
+
         await self._container.start()
 
         stream = self._container.attach(
