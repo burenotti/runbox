@@ -18,10 +18,19 @@ class TestStatus(Enum):
     server_error = 'SE'
     wrong_answer = 'WA'
 
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class TestResult(BaseModel):
     status: TestStatus
     why: str | None
+
+    # None if timelimit occurred
+    duration: float | None
 
 
 class TestCase(Protocol):

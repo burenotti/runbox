@@ -63,4 +63,6 @@ class IOTestCase:
             status = TestStatus.memory_limit
             why = "Memory limit has occurred"
 
-        return TestResult(status=status, why=why)
+        duration = state.finished_at - state.started_at
+
+        return TestResult(status=status, why=why, duration=duration.total_seconds())
