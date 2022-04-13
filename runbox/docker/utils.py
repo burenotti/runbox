@@ -37,6 +37,8 @@ async def write_files(
     directory: pathlib.Path,
     files: Sequence[File],
 ) -> None:
+    """Transfers archived files to a docker container
+    """
     tarball = create_tarball(files)
     await container.put_archive(str(directory), tarball.getvalue())
 

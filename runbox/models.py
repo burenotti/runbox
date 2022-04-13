@@ -15,6 +15,11 @@ class File(BaseModel):
     type: Literal["binary", "text"] = "text"
 
     def content_bytes(self):
+        """Encodes content of the file in utf-8 if it is a plain text
+
+        :return: either unmodified binary or text encoded in utf-8
+        :rtype: str | bytes
+        """
         if self.type == 'binary':
             return self.content
         else:
