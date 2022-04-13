@@ -163,6 +163,7 @@ async def test_code_running_with_input(
     assert not state.cpu_limit and not state.memory_limit, state.duration
     assert logs == ['What is your name?\n', 'Hello, Andrew\n']
 
+
 @pytest.mark.asyncio
 async def test_code_running_oom_kill(
     docker_client: aiodocker.Docker,
@@ -215,4 +216,4 @@ async def test_code_timeout_kill(
         await container.run()
         await container.wait()
         state = await container.state()
-    assert state.cpu_limit, 'Must be killled because of timeout'
+    assert state.cpu_limit, 'Must be killed because of timeout'
