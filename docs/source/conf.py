@@ -4,6 +4,11 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+
+# -- Imports ----------------------------------------------------------------
+import runbox
+
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -22,7 +27,7 @@ copyright = '2022, Artem Burenin'
 author = 'Artem Burenin'
 
 # The full version, including alpha/beta/rc tags
-release = '0.3.1'
+version = runbox.__version__
 
 
 # -- General configuration ---------------------------------------------------
