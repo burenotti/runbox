@@ -154,3 +154,8 @@ Now all that's left is we have to glue everything together with a main function.
 
     if __name__ == '__main__':
         asyncio.run(main())
+
+The final code will look like this.
+
+.. literalinclude:: ../../examples/fizzbuzz.py
+    :language: python
