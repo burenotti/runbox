@@ -47,8 +47,6 @@ async def main():
 
             print(logs)
 
-    await executor.close()
-
 
 if __name__ == '__main__':
     asyncio.run(main())

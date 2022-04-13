@@ -93,6 +93,4 @@ class DockerExecutor:
             if volume:
                 with suppress(DockerError):
                     await volume.delete()
-
-    async def close(self):
-        await self.docker_client.close()
+            await self.docker_client.close()

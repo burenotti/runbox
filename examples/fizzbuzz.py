@@ -61,9 +61,6 @@ async def fizz_buzz_test():
     # `results` variable will contain a list of a TestResults
     results = await test_suite.exec(executor)
 
-    # Don't forget to close `executor`.
-    await executor.close()
-
     return results
 
 
