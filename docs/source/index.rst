@@ -16,6 +16,7 @@ docker environment.
    installation
    quickstart
    testing
+   source_docs/index
 
 
 Indices and tables
