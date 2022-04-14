@@ -17,7 +17,9 @@ __all__ = [
 
 
 class DockerExecutor:
-
+    """
+    DockerExecutor is a sandbox factory.
+    """
     def __init__(
         self,
         url: str = None,
@@ -82,7 +84,15 @@ class DockerExecutor:
         driver: str = 'local',
         timeout: int = 5,
     ):
-
+        """
+        Context manager, that returns a temporary docker volume, that
+        will be deleted upon exiting context manager. Workdir allows you
+        to share data with multiple containers
+        :param name: volume name, will be generated if None.
+        :param driver: docker volume driver
+        :param timeout: timeout
+        :return:
+        """
         if not name:
             name = self.name_factory()
 
