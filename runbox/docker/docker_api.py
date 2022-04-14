@@ -31,21 +31,16 @@ class DockerExecutor:
     async def create_container(
         self,
         profile: DockerProfile,
-        files: Sequence[File],
-        workdir: DockerVolume,
+        files: Sequence[File] | None = None,
+        workdir: DockerVolume | None = None,
         limits: Limits = Limits(),
-        timeout: int = 5
+        timeout: int = 5,
+        workdir_readonly: bool = False,
     ) -> DockerSandbox:
 
         config = {
             'Image': profile.image,
             'Cmd': profile.cmd(files),
-            'Volumes': {
-                workdir.name: {
-                    'bind': str(profile.workdir_mount),
-                    'mode': 'rw'
-                }
-            },
             'Memory': limits.memory_bytes,
             'WorkingDir': str(profile.workdir_mount),
             'User': profile.user,
@@ -56,13 +51,22 @@ class DockerExecutor:
             'OpenStdin': True,
             'StdinOnce': False,
             'OomKillDisable': False,
+            'HostConfig': {
+                "Mounts": [
+                    {
+                        "Target": str(profile.workdir_mount),
+                        "Source": workdir.name,
+                        "Type": "volume",
+                        "ReadOnly": workdir_readonly,
+                    }
+                ] if workdir else None,
+            }
         }
         name = self.name_factory()
         task = self.docker_client.containers.create(
             config, name=name)
 
         container = await asyncio.wait_for(task, timeout)
-
         await write_files(
             container=container,
             directory=profile.workdir_mount,
