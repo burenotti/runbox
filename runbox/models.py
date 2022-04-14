@@ -1,12 +1,17 @@
+import itertools
 import pathlib
+import types
 from datetime import timedelta, datetime
-from pydantic import BaseModel, Field
 from typing import Literal, Sequence
+
+from pydantic import BaseModel, Field
 
 __all__ = [
     'File', 'DockerProfile',
     'Limits', 'SandboxState'
 ]
+
+from runbox.utils import Placeholder
 
 
 class File(BaseModel):
@@ -24,11 +29,31 @@ class File(BaseModel):
 class DockerProfile(BaseModel):
     image: str
     workdir_mount: pathlib.Path
-    exec: str
+    exec: str = ''
     user: str
+    cmd_template: list[str | types.EllipsisType | Placeholder] = Field(..., exclude=True)
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def cmd(self, files: Sequence[File]) -> list[str]:
-        return [self.exec, *(file.name for file in files)]
+        cmd = self.cmd_template.copy()
+        unused = [True] * len(files)
+        for idx, arg in enumerate(cmd):
+            if isinstance(arg, Placeholder):
+                try:
+                    cmd[idx] = files[arg.arg_num].name
+                    unused[arg.arg_num] = False
+                except IndexError:
+                    err = ValueError(f"Cannot bind argument {arg.arg_num}. "
+                                     f"Have only {len(files)} files")
+                    raise err from None
+
+        if Ellipsis in cmd:
+            idx = cmd.index(Ellipsis)
+            cmd[idx:idx + 1] = itertools.compress((file.name for file in files), unused)
+
+        return cmd
 
 
 class Limits(BaseModel):
@@ -39,7 +64,7 @@ class Limits(BaseModel):
 
     @property
     def memory_bytes(self) -> int:
-        return self.memory_mb * 1024**2
+        return self.memory_mb * 1024 ** 2
 
 
 class SandboxState(BaseModel):
