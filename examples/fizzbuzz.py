@@ -2,6 +2,7 @@ import asyncio
 from datetime import timedelta
 
 import runbox
+from runbox import SandboxBuilder
 from runbox.models import (
     DockerProfile, Limits, File
 )
@@ -13,8 +14,8 @@ from runbox.testing import BaseTestSuite, IOTestCase
 
 profile = DockerProfile(
     image='python-sandbox:latest',
-    workdir_mount='/sandbox',
-    exec='python',
+    workdir='/sandbox',
+    cmd_template=["python", ...],
     user='sandbox'
 )
 
@@ -43,23 +44,29 @@ async def fizz_buzz_test():
     # `DockerExecutor` is a class, that manages container creation
     executor = runbox.DockerExecutor()
 
-    # `TestSuites` allows us to automatically run tests on a given executor
-    # It needs `profile`, `limits` and `file` to run
-    test_suite = BaseTestSuite(profile, limits, [file])
+    async with executor.workdir() as workdir:
+        builder = SandboxBuilder() \
+            .with_limits(limits) \
+            .with_profile(profile) \
+            .add_files(file) \
+            .mount(workdir, '/sandbox')
+        # `TestSuites` allows us to automatically run tests on a given executor
+        # It needs `profile`, `limits` and `file` to run
+        test_suite = BaseTestSuite(builder)
 
-    # Then we add test cases in test suite
-    # `IOTestCase` simply runs the code with a given stdin and checks if the stdout matches
-    test_suite.add_tests(
-        IOTestCase(b'15\n', b'FizzBuzz\n'),
-        IOTestCase(b'25\n', b'Buzz\n'),
-        IOTestCase(b'24\n', b'Fizz\n'),
-        IOTestCase(b'19\n', b'19\n'),
-        IOTestCase(b'12.3\n', b'')  # This case should always fail
-    )
+        # Then we add test cases in test suite
+        # `IOTestCase` simply runs the code with a given stdin and checks if the stdout matches
+        test_suite.add_tests(
+            IOTestCase(b'15\n', b'FizzBuzz\n'),
+            IOTestCase(b'25\n', b'Buzz\n'),
+            IOTestCase(b'24\n', b'Fizz\n'),
+            IOTestCase(b'19\n', b'19\n'),
+            IOTestCase(b'12.3\n', b'')  # This case should always fail
+        )
 
-    # And now we execute test suite with `executor`
-    # `results` variable will contain a list of a TestResults
-    results = await test_suite.exec(executor)
+        # And now we execute test suite with `executor`
+        # `results` variable will contain a list of a TestResults
+        results = await test_suite.exec(executor)
 
     # Don't forget to close `executor`.
     await executor.close()
