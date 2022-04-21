@@ -10,6 +10,7 @@ class Mount(BaseModel):
     readonly: bool = False
 
     class Config:
+        arbitrary_types_allowed = True
         allow_mutation = False
 
     def dump(self) -> dict:
