@@ -8,8 +8,8 @@ from runbox.models import (
 
 profile = DockerProfile(
     image='python-sandbox:latest',
-    workdir_mount='/sandbox',
-    exec='python',
+    workdir='/sandbox',
+    cmd_template=["python", ...],
     user='sandbox'
 )
 
@@ -31,21 +31,25 @@ async def main():
     # Workdir is a temporary volume, that provides you a way to share data between a couple of containers
     # Volume will be deleted upon exiting the context manager
     async with executor.workdir() as workdir:
-        container = await executor.create_container(
-            profile=profile,
-            limits=limits,
-            files=[file],
-            workdir=workdir
-        )
+        builder = runbox.SandboxBuilder()
+
+        container = await builder \
+            .with_profile(profile) \
+            .with_limits(limits) \
+            .add_files(file) \
+            .mount(workdir, '/sandbox') \
+            .create(executor)
 
         # Context manager will automatically remove container on exit
         async with container as sandbox:
-            await sandbox.run(stdin=b'John\n')
+            # sandbox.run returns object, that gives you a way to
+            # communicate with container via io.read_out and io.write_in methods
+            io = await sandbox.run(stdin=b'John\n')
             # Wait until the container stops or is killed due to the timeout
             await sandbox.wait()
-            logs = await sandbox.log(stdout=True)
-
-            print(logs)
+            message = await io.read_out()
+            text = message.data.decode('utf-8')
+            print(text)
 
     await executor.close()
 
