@@ -1,11 +1,13 @@
-from datetime import datetime, timedelta
 import io
+from pathlib import Path
 import tarfile
+from datetime import timedelta
+
 import aiodocker
-import aiohttp
 import pytest
 
 from runbox.docker import DockerExecutor
+from runbox.docker.mount import Mount
 from runbox.docker.utils import create_tarball
 from runbox.models import DockerProfile, File, Limits
 
@@ -18,18 +20,21 @@ async def docker_client():
     await client.close()
 
 
+@pytest.mark.asyncio
 @pytest.fixture
 async def docker_executor():
-    return DockerExecutor()
+    executor = DockerExecutor()
+    yield executor
+    await executor.close()
 
 
 @pytest.fixture
 def python_sandbox_profile():
     return DockerProfile(
         image='python-sandbox:latest',
-        workdir_mount='/sandbox',
+        workdir=Path('/sandbox'),
         user='sandbox',
-        exec='python'
+        cmd_template=["python", ...]
     )
 
 
@@ -118,7 +123,13 @@ async def test_code_running_no_input(
         container = await docker_executor.create_container(
             profile=python_sandbox_profile,
             files=python_code_sample,
-            workdir=workdir,
+            mounts=[
+                Mount(
+                    volume=workdir,
+                    bind=Path('/sandbox'),
+                    readonly=False,
+                )
+            ],
         )
 
         await container.run()
@@ -150,7 +161,13 @@ async def test_code_running_with_input(
         container = await docker_executor.create_container(
             profile=python_sandbox_profile,
             files=files,
-            workdir=workdir,
+            mounts=[
+                Mount(
+                    volume=workdir,
+                    bind=Path('/sandbox'),
+                    readonly=False,
+                )
+            ],
             limits=limits,
         )
 
@@ -180,7 +197,11 @@ async def test_code_running_oom_kill(
             limits=Limits(
                 memory_mb=64
             ),
-            workdir=workdir,
+            mounts=[Mount(
+                volume=workdir,
+                bind=Path('/sandbox'),
+                readonly=False,
+            )]
         )
         await container.run()
         await container.wait()
@@ -211,7 +232,11 @@ async def test_code_timeout_kill(
                 time=timedelta(seconds=3),
                 memory_mb=64,
             ),
-            workdir=workdir,
+            mounts=[Mount(
+                volume=workdir,
+                bind=Path('/sandbox'),
+                readonly=False,
+            )],
         )
         await container.run()
         await container.wait()
