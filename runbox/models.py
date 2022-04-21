@@ -33,8 +33,7 @@ class File(BaseModel):
 
 class DockerProfile(BaseModel):
     image: str
-    workdir_mount: pathlib.Path
-    exec: str = ''
+    workdir: pathlib.Path
     user: str
     cmd_template: list[str | types.EllipsisType | Placeholder] = Field(..., exclude=True)
 
