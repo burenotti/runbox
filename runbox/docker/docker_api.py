@@ -5,10 +5,10 @@ from typing import Callable, Sequence
 
 from aiodocker import Docker
 from aiodocker.exceptions import DockerError
-from aiodocker.volumes import DockerVolume
 
 from runbox.docker.sandbox import DockerSandbox
 from runbox.models import File, Limits, DockerProfile
+from .mount import Mount
 from .utils import write_files
 
 __all__ = [
@@ -20,6 +20,7 @@ class DockerExecutor:
     """
     DockerExecutor is a sandbox factory.
     """
+
     def __init__(
         self,
         url: str = None,
@@ -34,17 +35,16 @@ class DockerExecutor:
         self,
         profile: DockerProfile,
         files: Sequence[File] | None = None,
-        workdir: DockerVolume | None = None,
+        mounts: list[Mount] | None = None,
         limits: Limits = Limits(),
         timeout: int = 5,
-        workdir_readonly: bool = False,
     ) -> DockerSandbox:
 
         config = {
             'Image': profile.image,
             'Cmd': profile.cmd(files),
             'Memory': limits.memory_bytes,
-            'WorkingDir': str(profile.workdir_mount),
+            'WorkingDir': str(profile.workdir),
             'User': profile.user,
             'AttachStdin': True,
             'AttachStdout': True,
@@ -54,14 +54,7 @@ class DockerExecutor:
             'StdinOnce': False,
             'OomKillDisable': False,
             'HostConfig': {
-                "Mounts": [
-                    {
-                        "Target": str(profile.workdir_mount),
-                        "Source": workdir.name,
-                        "Type": "volume",
-                        "ReadOnly": workdir_readonly,
-                    }
-                ] if workdir else None,
+                "Mounts": [mount.dump() for mount in mounts or []] or None,
             }
         }
         name = self.name_factory()
@@ -71,7 +64,7 @@ class DockerExecutor:
         container = await asyncio.wait_for(task, timeout)
         await write_files(
             container=container,
-            directory=profile.workdir_mount,
+            directory=profile.workdir,
             files=files,
         )
 
