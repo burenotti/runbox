@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from runbox import DockerExecutor, SandboxBuilder
+from runbox import DockerExecutor
 from .proto import TestCase, TestResult
+from ..proto import SandboxFactory
 
 
 class BaseTestSuite:
 
     def __init__(
         self,
-        builder: SandboxBuilder,
+        sandbox_factory: SandboxFactory,
     ) -> None:
-        self.builder = builder
+        self.builder = sandbox_factory
         self.tests: list[TestCase] = []
 
     def add_tests(self, *tests: TestCase) -> BaseTestSuite:

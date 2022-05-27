@@ -1,8 +1,11 @@
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
 
 from aiodocker.stream import Message
 
-from runbox.models import SandboxState
+from runbox.models import SandboxState, File
+
+if TYPE_CHECKING:
+    from runbox.docker.docker_api import DockerExecutor
 
 
 class SandboxInput(Protocol):
@@ -22,6 +25,11 @@ class SandboxIO(SandboxInput, SandboxOutput, Protocol):
 
 
 class Sandbox(Protocol):
+
+    stream: SandboxIO | None
+
+    async def write_files(self, *file: File) -> None:
+        ...
 
     async def run(self, stdin: bytes | None = None) -> SandboxIO:
         ...
@@ -45,4 +53,10 @@ class Sandbox(Protocol):
         ...
 
     async def __aexit__(self, *_):
+        ...
+
+
+class SandboxFactory(Protocol):
+
+    async def create(self, executor: "DockerExecutor") -> Sandbox:
         ...
