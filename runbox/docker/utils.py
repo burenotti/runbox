@@ -40,7 +40,7 @@ async def write_files(
     """Transfers archived files to a docker container
     """
     tarball = create_tarball(files)
-    await container.put_archive(str(directory), tarball.getvalue())
+    await container.put_archive(directory.as_posix(), tarball.getvalue())
 
 
 def create_ulimit(name: str, soft: Any, hard: Any) -> dict[str, Any]:

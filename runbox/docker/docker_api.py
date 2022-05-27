@@ -44,7 +44,7 @@ class DockerExecutor:
             'Image': profile.image,
             'Cmd': profile.cmd(files),
             'Memory': limits.memory_bytes,
-            'WorkingDir': str(profile.workdir),
+            'WorkingDir': profile.workdir.as_posix(),
             'User': profile.user,
             'AttachStdin': True,
             'AttachStdout': True,
