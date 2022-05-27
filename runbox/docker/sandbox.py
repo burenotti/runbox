@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from typing import Any
 from contextlib import suppress
 
@@ -7,7 +8,8 @@ from aiodocker.containers import DockerContainer
 from aiodocker.stream import Stream
 
 from runbox.docker.exceptions import SandboxError
-from runbox.models import SandboxState
+from runbox.docker.utils import write_files
+from runbox.models import SandboxState, File
 from runbox.proto import SandboxIO
 
 
@@ -25,6 +27,13 @@ class DockerSandbox:
         self._cpu_limit: bool = False
         self._timeout_task: asyncio.Task | None = None
         self._stream: Stream | None = None
+
+    @property
+    def stream(self) -> SandboxIO | None:
+        return self._stream
+
+    async def write_files(self, path: Path | str, *files: File) -> None:
+        await write_files(self._container, path, files)
 
     async def wait(self):
         try:
