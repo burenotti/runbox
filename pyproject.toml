@@ -9,16 +9,16 @@ license = "MIT"
 python = "^3.10"
 aiodocker = "^0.21.0"
 aiohttp = "^3.8.1"
-pydantic = "^1.9.0"
+pydantic = "^1.9.1"
 
 [tool.poetry.dev-dependencies]
 sphinx-pydantic = "^0.1.1"
 sphinx-rtd-theme = "^1.0.0"
 Sphinx = "^4.5.0"
-pytest = "^7.1.1"
+pytest = "^7.1.2"
 pytest-asyncio = "^0.18.2"
 autopep8 = "^1.6.0"
-mypy = "^0.942"
+mypy = "^0.961"
 pip = "^22.0.4"
 
 [build-system]
