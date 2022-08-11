@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Protocol, TYPE_CHECKING
 
 from aiodocker.stream import Message
@@ -28,7 +29,7 @@ class Sandbox(Protocol):
 
     stream: SandboxIO | None
 
-    async def write_files(self, *file: File) -> None:
+    async def write_files(self, path: str | Path, *file: File) -> None:
         ...
 
     async def run(self, stdin: bytes | None = None) -> SandboxIO:
