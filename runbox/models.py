@@ -19,6 +19,9 @@ class File(BaseModel):
     content: str | bytes
     type: Literal["binary", "text"] = "text"
 
+    class Config:
+        frozen = True
+
     def content_bytes(self):
         """Encodes content of the file in utf-8 if it is a plain text
 
@@ -39,6 +42,7 @@ class DockerProfile(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+        frozen = True
 
     def cmd(self, files: Sequence[File]) -> list[str]:
         cmd = self.cmd_template.copy()
@@ -65,6 +69,9 @@ class Limits(BaseModel):
     memory_mb: int = 64
     cpu_count: int = 1
     disk_space_mb: int = 256
+
+    class Config:
+        frozen = True
 
     @property
     def memory_bytes(self) -> int:
