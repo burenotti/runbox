@@ -1,0 +1,15 @@
+pipeline:
+
+  - use_sandbox:
+      key: "sandbox"
+      profile:
+        image: "sandbox:python-3.10"
+        workdir: "/sandbox"
+        cmd_template: [ "python", "main.py" ]
+        user: sandbox
+      limits:
+        time_s: 1
+      files:
+        - name: "main.py"
+          content: "print('Hello, world!')\n"
+      attach: true

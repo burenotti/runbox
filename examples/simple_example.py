@@ -7,7 +7,7 @@ from runbox.models import (
 )
 
 profile = DockerProfile(
-    image='python-sandbox:latest',
+    image='sandbox:python-3.10',
     workdir='/sandbox',
     cmd_template=["python", ...],
     user='sandbox'
