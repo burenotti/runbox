@@ -1,5 +1,5 @@
-FROM python:3.10
+FROM python:3.10-alpine
 
-RUN useradd -M -d /sandbox sandbox && \
+RUN adduser --disabled-password sandbox && \
     mkdir /sandbox && \
     chown sandbox:sandbox /sandbox

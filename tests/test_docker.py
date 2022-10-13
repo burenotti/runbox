@@ -31,7 +31,7 @@ async def docker_executor():
 @pytest.fixture
 def python_sandbox_profile():
     return DockerProfile(
-        image='python-sandbox:latest',
+        image='sandbox:python-3.10',
         workdir=Path('/sandbox'),
         user='sandbox',
         cmd_template=["python", ...]
