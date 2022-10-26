@@ -5,7 +5,7 @@ import pytest
 from aiodocker import DockerError
 
 from runbox import DockerExecutor
-from runbox.build_stages import UseSandbox, DefaultExecutionPipeline, BuildState
+from runbox.build_stages import UseSandbox, BasePipeline, BuildState
 from runbox.build_stages.stages import StreamType
 from runbox.models import DockerProfile, File, Limits
 
@@ -43,8 +43,10 @@ class TestSandboxObserver:
         assert actual_stderr == self.expected_stderr
 
 
-def pipeline():
-    return DefaultExecutionPipeline([
+def pipeline() -> BasePipeline:
+    return BasePipeline() \
+        .add_stages(
+        "run",
         UseSandbox(UseSandbox.Params(
             key='sandbox',
             profile=DockerProfile(
@@ -63,7 +65,7 @@ def pipeline():
             mounts=[],
             attach=False
         ))
-    ])
+    )
 
 
 @pytest.fixture
