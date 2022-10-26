@@ -14,6 +14,9 @@ class SandboxInput(Protocol):
     async def write_in(self, send: bytes) -> None:
         ...
 
+    async def detach(self) -> None:
+        ...
+
 
 class SandboxOutput(Protocol):
 
