@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "language": "python",
+    "version": "3.10"
+  },
+  "pipeline": {
+    "build": {
+      "use_volume": {
+        "key": "build"
+      },
+      "use_sandbox": {
+        "key": "builder",
+        "profile": {
+          "image": "sandbox:gcc-10",
+          "workdir": "/sandbox",
+          "user": "sandbox",
+          "cmd_template": [
+            "g++",
+            "/sandbox/main.cpp",
+            "-o",
+            "/sandbox/main"
+          ]
+        },
+        "mounts": [
+          {
+            "key": "build",
+            "bind": "/sandbox"
+          }
+        ],
+        "files": [
+          {
+            "name": "main.cpp",
+            "content": "#include <iostream>\n int main(){ std::cout << \"Hello World!\" << std::endl; }"
+          }
+        ]
+      }
+    },
+    "run": {
+      "use_sandbox": {
+        "key": "runner",
+        "profile": {
+          "image": "ubuntu:latest",
+          "workdir": "/tmp",
+          "user": "root",
+          "cmd_template": [
+            "/bin/bash",
+            "-c",
+            "chmod +x ./main && ./main"
+          ]
+        },
+        "mounts": [
+          {
+            "key": "build",
+            "bind": "/tmp"
+          }
+        ]
+      }
+    }
+  }
+}
