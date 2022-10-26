@@ -15,7 +15,7 @@ class Mount(BaseModel):
 
     def dump(self) -> dict:
         return {
-            "Target": str(self.bind),
+            "Target": str(self.bind.as_posix()),
             "Source": self.volume.name,
             "Type": "volume",
             "ReadOnly": self.readonly,
