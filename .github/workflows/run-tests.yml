@@ -3,15 +3,39 @@ name: Run Tests
 on: [push]
 
 jobs:
+  check-changed-files:
+    name: Check if code changed
+    runs-on: ubuntu-latest
+    outputs:
+      run_rest_jobs: ${{steps.changed-files-specific.outputs.any_changed == 'true'}}
+    steps:
+      - name: Set up repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v34
+        with: 
+          sha: ${{ github.sha }}
+          files: |
+            tests/
+            runbox/
+
   run-tests:
+    name: Pytest
+    needs: [check-changed-files]
+    if: needs.check-changed-files.outputs.run_rest_jobs == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10"]
     steps:
       - name: Set up repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3 
       - name: Set up Python ${{ matrix.python-version }}
+        
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -28,9 +52,9 @@ jobs:
           sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
       - name: Setup sandbox images
         run: |
-          cd images/Python3.10/
+          cd examples/images/Python3.10/
           docker build -t sandbox:python-3.10 .
-          cd ../../
+          cd ../../../
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
