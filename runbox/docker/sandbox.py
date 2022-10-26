@@ -1,16 +1,32 @@
 import asyncio
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
-from contextlib import suppress
 
 import aiodocker
 from aiodocker.containers import DockerContainer
-from aiodocker.stream import Stream
+from aiodocker.stream import Stream, Message
 
 from runbox.docker.exceptions import SandboxError
 from runbox.docker.utils import write_files
 from runbox.models import SandboxState, File
 from runbox.proto import SandboxIO
+
+
+class StreamWrapper:
+
+    def __init__(self, stream: Stream, detach_keys: str = "ctrl-c"):
+        self.stream = stream
+        self.detach_keys = detach_keys
+
+    async def write_in(self, send: bytes) -> None:
+        await self.stream.write_in(send)
+
+    async def read_out(self) -> Message | None:
+        return await self.stream.read_out()
+
+    async def detach(self) -> None:
+        await self.stream.write_in(self.detach_keys.encode())
 
 
 class DockerSandbox:
@@ -58,13 +74,14 @@ class DockerSandbox:
 
         self._timeout_task = loop.create_task(waiter)
 
-    async def run(self, stdin: bytes | None = None) -> SandboxIO:
+    async def run(self, stdin: bytes | None = None) -> StreamWrapper:
         self._cpu_limit = False
 
         await self._container.start()
 
         stream = self._container.attach(
-            stdin=True, stdout=True, stderr=True
+            stdin=True, stdout=True, stderr=True, logs=True,
+            detach_keys="ctrl-c"
         )
         self._stream = stream
 
