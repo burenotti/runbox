@@ -4,7 +4,7 @@ from runbox.build_stages import BasePipeline
 from runbox.build_stages.pipeline_loaders import (
     load_stages, JsonPipelineLoader,
 )
-from runbox.build_stages.stages import UseSandbox, UseVolume
+from runbox.build_stages.stages import UseSandbox, UseVolume, default_stages
 from runbox.models import DockerProfile, Limits, File
 
 
@@ -22,12 +22,10 @@ def test_can_load_default_stages():
     assert loaded_stages == expected_stages
 
 
-def test_can_load_pipeline_from_yaml():
+def test_can_load_pipeline_from_json():
     pipeline: BasePipeline = JsonPipelineLoader[BasePipeline](
-        path=Path('./python3.yml'),
-        stages_map={
-            'use_sandbox': 'runbox.build_stages.stages:UseSandbox',
-        },
+        path=Path('./tests/python3.json'),
+        stage_getter=lambda stage: load_stages(default_stages())[stage],
         class_=BasePipeline
     ).load()
 
@@ -36,11 +34,11 @@ def test_can_load_pipeline_from_yaml():
         "run",
         UseSandbox(
             UseSandbox.Params(
-                key="sandbox",
+                key="python",
                 files=[
                     File(
                         name="main.py",
-                        content="print('Hello, world!')\n"
+                        content="print('Hello, world!')"
                     )
                 ],
                 profile=DockerProfile(
