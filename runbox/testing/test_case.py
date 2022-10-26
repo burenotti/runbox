@@ -58,11 +58,13 @@ class IOTestCase:
 
         if state.cpu_limit:
             status = TestStatus.time_limit
-            why = "Time limit has occurred"
+            why = b"Time limit has occurred"
         elif state.memory_limit:
             status = TestStatus.memory_limit
-            why = "Memory limit has occurred"
+            why = b"Memory limit has occurred"
 
+        assert state.finished_at is not None
+        
         duration = state.finished_at - state.started_at
 
         return TestResult(status=status, why=why, duration=duration.total_seconds())

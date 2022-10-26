@@ -2,7 +2,7 @@ import itertools
 import pathlib
 import types
 from datetime import timedelta, datetime
-from typing import Literal, Sequence
+from typing import Literal, Sequence, cast
 
 from pydantic import BaseModel, Field
 
@@ -61,7 +61,7 @@ class DockerProfile(BaseModel):
             idx = cmd.index(Ellipsis)
             cmd[idx:idx + 1] = itertools.compress((file.name for file in files), unused)
 
-        return cmd
+        return cast(list[str], cmd)
 
 
 class Limits(BaseModel):

@@ -42,7 +42,7 @@ class DockerExecutor:
 
         config = {
             'Image': profile.image,
-            'Cmd': profile.cmd(files),
+            'Cmd': profile.cmd(files or []),
             'Memory': limits.memory_bytes,
             'WorkingDir': profile.workdir.as_posix(),
             'User': profile.user,
@@ -62,11 +62,12 @@ class DockerExecutor:
             config, name=name)
 
         container = await asyncio.wait_for(task, timeout)
-        await write_files(
-            container=container,
-            directory=profile.workdir,
-            files=files,
-        )
+        if files:
+            await write_files(
+                container=container,
+                directory=profile.workdir,
+                files=files,
+            )
 
         return DockerSandbox(name, container, limits.time.total_seconds())
 

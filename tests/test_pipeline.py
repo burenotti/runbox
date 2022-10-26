@@ -1,16 +1,15 @@
 from pathlib import Path
 
-from runbox.build_stages import DefaultExecutionPipeline
+from runbox.build_stages import BasePipeline
 from runbox.build_stages.pipeline_loaders import (
-    pipeline_from_yaml,
-    _load_stages,
+    load_stages, JsonPipelineLoader,
 )
 from runbox.build_stages.stages import UseSandbox, UseVolume
 from runbox.models import DockerProfile, Limits, File
 
 
 def test_can_load_default_stages():
-    loaded_stages = _load_stages({
+    loaded_stages = load_stages({
         'use_sandbox': 'runbox.build_stages.stages:UseSandbox',
         'use_volume': 'runbox.build_stages.stages:UseVolume',
     })
@@ -24,15 +23,17 @@ def test_can_load_default_stages():
 
 
 def test_can_load_pipeline_from_yaml():
-    pipeline = pipeline_from_yaml(
-        file=Path('./python3.yml'),
+    pipeline: BasePipeline = JsonPipelineLoader[BasePipeline](
+        path=Path('./python3.yml'),
         stages_map={
             'use_sandbox': 'runbox.build_stages.stages:UseSandbox',
         },
-        class_=DefaultExecutionPipeline
-    )
+        class_=BasePipeline
+    ).load()
 
-    expected_pipeline = DefaultExecutionPipeline([
+    expected_pipeline = BasePipeline() \
+        .add_stages(
+        "run",
         UseSandbox(
             UseSandbox.Params(
                 key="sandbox",
@@ -52,6 +53,6 @@ def test_can_load_pipeline_from_yaml():
                 attach=True,
             )
         )
-    ])
+    )
 
-    assert pipeline.stages[0].params == expected_pipeline.stages[0].params
+    assert pipeline._groups['run'][0].params == expected_pipeline._groups['run'][0].params

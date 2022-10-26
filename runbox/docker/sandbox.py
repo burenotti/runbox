@@ -46,10 +46,11 @@ class DockerSandbox:
 
     @property
     def stream(self) -> SandboxIO | None:
+        assert self._stream is not None, "Stream can't be get before the container is started"
         return self._stream
 
     async def write_files(self, path: Path | str, *files: File) -> None:
-        await write_files(self._container, path, files)
+        await write_files(self._container, Path(path), files)
 
     async def wait(self):
         try:
@@ -90,7 +91,7 @@ class DockerSandbox:
 
         await self.set_timeout()
 
-        return stream
+        return StreamWrapper(stream)
 
     async def state(self) -> SandboxState:
         container_info = await self._container.docker.containers.get(self._container.id)

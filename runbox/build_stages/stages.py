@@ -12,7 +12,7 @@ from typing import (
 
 from pydantic import BaseModel
 
-from runbox import DockerExecutor, Mount, SandboxBuilder, DockerSandbox
+from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
 from runbox.models import File, Limits, DockerProfile
 from runbox.proto import Sandbox
 
@@ -46,7 +46,10 @@ class StreamType(int, Enum):
 
 
 class Observer(Protocol):
-    stdin: AsyncIterable[str]
+
+    @property
+    def stdin(self) -> AsyncIterable[str]:
+        ...
 
     async def write_output(self, key: str, data: str, stream: StreamType):
         ...
@@ -125,13 +128,13 @@ class UseVolume:
     def is_disposed(self) -> bool:
         return self._is_disposed
 
-    async def setup(self, state: BuildState):
+    async def setup(self, state: BuildState) -> None:
         self._is_setup = True
         self._state = state
         self._volume_ctx = state.executor.workdir()
         self._state.shared[self.params.key] = await self._volume_ctx.__aenter__()
 
-    async def dispose(self):
+    async def dispose(self) -> None:
         self._is_disposed = True
         if self._volume_ctx:
             await self._volume_ctx.__aexit__(None, None, None)
@@ -185,7 +188,6 @@ class UseSandbox:
         async for message in self._state.observer.stdin:
             if message is not None:
                 await sandbox.stream.write_in(message.encode('utf-8'))
-
 
     async def output_listener(self, sandbox: DockerSandbox):
 

@@ -48,11 +48,12 @@ class SandboxBuilder:
         return new_builder
 
     async def create(self, executor: DockerExecutor, timeout: int = 5) -> DockerSandbox:
+        assert self._profile is not None
         return await executor.create_container(
             profile=self._profile,
             files=self._files,
             mounts=self._mounts,
-            limits=self._limits,
+            limits=self._limits or Limits(),
             timeout=timeout,
         )
 
