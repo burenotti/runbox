@@ -1,7 +1,7 @@
 import io
-from pathlib import Path
 import tarfile
 from datetime import timedelta
+from pathlib import Path
 
 import aiodocker
 import pytest
@@ -132,10 +132,10 @@ async def test_code_running_no_input(
             ],
         )
 
-        await container.run()
-        await container.wait()
-
-    logs = await container.log(stdout=True)
+        async with container:
+            await container.run()
+            await container.wait()
+            logs = await container.log(stdout=True)
     assert logs[0] in ('Hello, World!\r\n', 'Hello, World!\n')
 
 
@@ -172,11 +172,12 @@ async def test_code_running_with_input(
         )
 
         stdin = await container.run()
-        await stdin.write_in(b'Andrew\n')
-        await container.wait()
-    logs = await container.log(stdout=True)
-    state = await container.state()
-    # await container._container.delete()
+        async with container:
+            await stdin.write_in(b'Andrew\n')
+            await container.wait()
+            logs = await container.log(stdout=True)
+            state = await container.state()
+
     assert not state.cpu_limit and not state.memory_limit, state.duration
     assert logs == ['What is your name?\n', 'Hello, Andrew\n']
 
@@ -203,11 +204,11 @@ async def test_code_running_oom_kill(
                 readonly=False,
             )]
         )
-        await container.run()
-        await container.wait()
-
-    state = await container.state()
-    assert state.memory_limit
+        async with container:
+            await container.run()
+            await container.wait()
+            state = await container.state()
+        assert state.memory_limit
 
 
 @pytest.mark.asyncio
@@ -238,7 +239,8 @@ async def test_code_timeout_kill(
                 readonly=False,
             )],
         )
-        await container.run()
-        await container.wait()
-        state = await container.state()
+        async with container:
+            await container.run()
+            await container.wait()
+            state = await container.state()
     assert state.cpu_limit, 'Must be killed because of timeout'
