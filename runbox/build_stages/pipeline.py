@@ -42,7 +42,6 @@ class Pipeline(Protocol):
 
 
 class BasePipeline:
-    meta: Mapping[str, Any]
 
     def __init__(self):
         self._groups: dict[str, list[BuildStage]] = {}
@@ -54,7 +53,7 @@ class BasePipeline:
     @property
     def build_state(self) -> BuildState:
         assert self.is_valid
-        return BuildState(self._executor, self._observer, self._state)
+        return BuildState(self._executor, self._observer, self._state) # type: ignore
 
     @property
     def meta(self) -> Mapping[str, Any]:

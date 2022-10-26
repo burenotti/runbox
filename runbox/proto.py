@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 class SandboxInput(Protocol):
 
-    async def write_in(self, send: bytes) -> None:
+    async def write_in(self, data: bytes) -> None:
         ...
 
     async def detach(self) -> None:

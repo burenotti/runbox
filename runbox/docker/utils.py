@@ -22,7 +22,7 @@ def create_tarball(files: Sequence[File]) -> io.BytesIO:
 
             file_info = tarfile.TarInfo(file.name)
             file_info.size = len(content)
-            file_info.mtime = timestamp
+            file_info.mtime = int(timestamp)
 
             tarball.addfile(
                 tarinfo=file_info,

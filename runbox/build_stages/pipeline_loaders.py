@@ -26,7 +26,7 @@ def load_stages(stages_map: dict[str, str]) -> dict[str, Type[BuildStage]]:
     return stages
 
 
-PipelineType = TypeVar('PipelineType', bound=Pipeline)
+PipelineType = TypeVar('PipelineType', bound=Pipeline, covariant=True)
 
 
 class PipelineLoader(Protocol[PipelineType]):
