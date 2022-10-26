@@ -11,7 +11,16 @@ jobs:
     steps:
       - name: Set up repository
         uses: actions/checkout@v3
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v34
+        with: 
+          sha: ${{ github.sha }}
+          files: |
+            tests/
+            runbox/
       - name: Set up Python ${{ matrix.python-version }}
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
