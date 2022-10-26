@@ -1,17 +1,22 @@
 import importlib
 from pathlib import Path
-from typing import Type, Any
+from typing import Type, Any, Protocol, TypeVar, Generic
 
-import yaml
-from yaml.loader import SafeLoader
+from pydantic import BaseModel
 
-from runbox.build_stages.pipeline import ExecutionPipeline
+from runbox.build_stages.pipeline import Pipeline
 from runbox.build_stages.stages import BuildStage
 
-__all__ = ['parse_obj', 'pipeline_from_yaml']
+__all__ = ['load_stages', 'PipelineLoader', 'JsonPipelineLoader']
 
 
-def _load_stages(stages_map: dict[str, str]):
+class StageGetter(Protocol):
+
+    def __call__(self, stage_name: str) -> Type[BuildStage]:
+        ...
+
+
+def load_stages(stages_map: dict[str, str]) -> dict[str, Type[BuildStage]]:
     stages: dict[str, Type[BuildStage]] = {}
     for stage_name, path in stages_map.items():
         module, class_ = path.split(':')
@@ -21,27 +26,46 @@ def _load_stages(stages_map: dict[str, str]):
     return stages
 
 
-def parse_obj(
-    stages_map: dict[str, Type[BuildStage]],
-    obj: dict[str, Any],
-) -> list[BuildStage]:
-    stages = []
-    for stages_schema in obj['pipeline']:
-        stage_name, raw_params = next(iter(stages_schema.items()))
-        stage = stages_map[stage_name]
-        params = stage.Params.parse_obj(raw_params)
-        stages.append(stage(params))
-    return stages
+PipelineType = TypeVar('PipelineType', bound=Pipeline)
 
 
-def pipeline_from_yaml(
-    file: Path,
-    stages_map: dict[str, str],
-    class_: Type[ExecutionPipeline]
-) -> ExecutionPipeline:
-    with file.open() as fp:
-        data = yaml.load(fp, Loader=SafeLoader)
+class PipelineLoader(Protocol[PipelineType]):
 
-    pipeline = class_()
-    pipeline.add_stages(*parse_obj(_load_stages(stages_map), data))
-    return pipeline
+    def load(self) -> PipelineType:
+        ...
+
+
+T = TypeVar('T')
+
+JsonBuildGroupSchema = dict[str, dict[str, Any]]
+
+
+class JsonPipelineSchema(BaseModel):
+    meta: dict[str, Any] = {}
+    pipeline: dict[str, JsonBuildGroupSchema]
+
+
+class JsonPipelineLoader(Generic[PipelineType]):
+
+    def __init__(self, path: Path, class_: Type[PipelineType], stage_getter: StageGetter):
+        self.stage_getter = stage_getter
+        self.path = path
+        self.class_ = class_
+        self._schema: list[tuple[str, Type[BuildStage], BaseModel]] = []
+        self.load_schema()
+
+    def load_schema(self) -> None:
+        data = JsonPipelineSchema.parse_file(self.path)
+
+        for group_name, group in data.pipeline.items():
+            for stage_name, raw_params in group.items():
+                stage = self.stage_getter(stage_name)
+                params = stage.Params.parse_obj(raw_params)
+                self._schema.append((group_name, stage, params))
+
+    def load(self) -> PipelineType:
+        pipeline = self.class_()
+        for group, Stage, params in self._schema:
+            pipeline.add_stages(group, Stage(params))
+
+        return pipeline
