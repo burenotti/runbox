@@ -15,6 +15,9 @@ class BaseScoringSystem:
         self._total_scoring_strategy: TotalScoringStrategy | None = None
 
     async def estimate(self, test_results: Sequence[TestResult]) -> Mark:
+        assert self._unit_scoring_strategy is not None
+        assert self._total_scoring_strategy is not None
+        
         marks = tuple(map(self._unit_scoring_strategy, test_results))
         return self._total_scoring_strategy(test_results, marks)
 

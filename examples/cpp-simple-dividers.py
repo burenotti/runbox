@@ -19,8 +19,8 @@ run_profile = DockerProfile(
     cmd_template=['/opt/build']
 )
 
-with open('./src/dividers.cpp') as file:
-    content = file.read()
+with open('./src/dividers.cpp') as fp:
+    content = fp.read()
     file = File(name='main.cpp', content=content)
 
 
