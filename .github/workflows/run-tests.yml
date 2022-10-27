@@ -20,8 +20,8 @@ jobs:
         with: 
           sha: ${{ github.sha }}
           files: |
-            tests/
-            runbox/
+            tests/**
+            runbox/**
 
   run-tests:
     name: Pytest
