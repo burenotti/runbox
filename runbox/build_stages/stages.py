@@ -66,7 +66,8 @@ class BuildState:
 
 
 class BuildStage(Protocol):
-    Params: Type[BaseModel]
+    class Params(BaseModel):
+        ...
 
     def __init__(self, params: BaseModel):
         ...

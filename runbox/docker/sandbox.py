@@ -19,8 +19,8 @@ class StreamWrapper:
         self.stream = stream
         self.detach_keys = detach_keys
 
-    async def write_in(self, send: bytes) -> None:
-        await self.stream.write_in(send)
+    async def write_in(self, data: bytes) -> None:
+        await self.stream.write_in(data)
 
     async def read_out(self) -> Message | None:
         return await self.stream.read_out()
@@ -47,7 +47,7 @@ class DockerSandbox:
     @property
     def stream(self) -> SandboxIO | None:
         assert self._stream is not None, "Stream can't be get before the container is started"
-        return self._stream
+        return StreamWrapper(self._stream)
 
     async def write_files(self, path: Path | str, *files: File) -> None:
         await write_files(self._container, Path(path), files)
