@@ -60,3 +60,7 @@ def test_placeholder_unbound_error(profile, files):
     profile = profile.copy(update={'cmd_template': ['g++', _[42]]})
     with pytest.raises(ValueError):
         profile.cmd(files)
+
+
+def test_can_create_docker_profile_specifying_only_image():
+    profile = DockerProfile(image='alpine:latest')
