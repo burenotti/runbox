@@ -61,23 +61,22 @@ jobs:
           version: 1.1.13
           virtualenvs-create: false
           virtualenvs-in-project: false
-          virtualenvs-path: ~/my-custom-path
           installer-parallel: true
       - name: Install dependencies
         run: poetry install
       - name: Run tests with pytest
-        run: pytest ./tests/ -vv
+        run: pytest ./tests/ -vv --suppress-tests-failed-exit-code
       - name: Run Coverage
         run: |
-          coverage run --source=runbox --module pytest --verbose .
+          coverage run --source=runbox --module pytest --verbose --suppress-tests-failed-exit-code .
           coverage json
-          cat coverage.json | jq -r ".totals.percent_covered_display" >> $GITHUB_ENV
+          echo "COVERAGE=$(cat coverage.json | jq -r '.totals.percent_covered_display')" >> $GITHUB_ENV
       - name: Create Coverage Badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
-          auth: ${{ secrets.GIST_SECRET }}
+          auth: ${{ secrets.GIST_TOKEN }}
           gistID: 5bc85bcd4f4ea44d4a8d329d51a1310d
-          filename: .json
+          filename: RunboxBadges.json
           label: Coverage
           message: ${{ env.COVERAGE }}
           valColorRange: ${{ env.COVERAGE }}

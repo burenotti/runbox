@@ -368,6 +368,17 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "six", "pytest-xdist", "virtualenv"]
 
 [[package]]
+name = "pytest-custom-exit-code"
+version = "0.3.0"
+description = "Exit pytest test session with custom exit code in different scenarios"
+category = "dev"
+optional = false
+python-versions = ">2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[package.dependencies]
+pytest = ">=4.0.2"
+
+[[package]]
 name = "pytz"
 version = "2022.5"
 description = "World timezone definitions, modern and historical"
@@ -596,7 +607,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "d9a4acbf2db227a5413143ea5494a18664afde16eeeb3745131844e5a9db7ab7"
+content-hash = "7ac93e612419c725a8341f7d1b5f354de11765d12ec153ae73f551cb1d9775cf"
 
 [metadata.files]
 aiodocker = []
@@ -632,6 +643,7 @@ pyparsing = []
 pytest = []
 pytest-asyncio = []
 pytest-cov = []
+pytest-custom-exit-code = []
 pytz = []
 pyyaml = []
 requests = []
