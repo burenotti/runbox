@@ -6,8 +6,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path, PosixPath
 from typing import (
-    Any, Sequence, TypeVar, Protocol,
-    AsyncContextManager, AsyncIterable, Type
+    Any,
+    Sequence,
+    TypeVar,
+    Protocol,
+    AsyncContextManager,
+    AsyncIterable,
 )
 
 from pydantic import BaseModel
@@ -17,27 +21,31 @@ from runbox.models import File, Limits, DockerProfile
 from runbox.proto import Sandbox
 
 __all__ = [
-    'Observer', 'UseSandbox', 'UseVolume',
-    'SharedState', 'BuildState', 'BuildStage',
-    'StreamType', 'default_stages'
+    "Observer",
+    "UseSandbox",
+    "UseVolume",
+    "SharedState",
+    "BuildState",
+    "BuildStage",
+    "StreamType",
+    "default_stages",
 ]
 
 
 def default_stages() -> dict[str, str]:
     return {
-        'use_sandbox': 'runbox.build_stages:UseSandbox',
-        'use_volume': 'runbox.build_stages:UseVolume',
+        "use_sandbox": "runbox.build_stages:UseSandbox",
+        "use_volume": "runbox.build_stages:UseVolume",
     }
 
 
 class BuildStageError(Exception):
-
     def __init__(self, message: str):
         super(BuildStageError, self).__init__(message)
 
 
-T = TypeVar('T')
-B = TypeVar('B')
+T = TypeVar("T")
+B = TypeVar("B")
 
 
 class StreamType(int, Enum):
@@ -46,7 +54,6 @@ class StreamType(int, Enum):
 
 
 class Observer(Protocol):
-
     @property
     def stdin(self) -> AsyncIterable[str]:
         ...
@@ -66,7 +73,8 @@ class BuildState:
 
 
 class BuildStage(Protocol):
-    Params: Type[BaseModel]
+    class Params(BaseModel):
+        pass
 
     def __init__(self, params: BaseModel):
         ...
@@ -87,7 +95,6 @@ class BuildStage(Protocol):
 
 
 class WriteFiles:
-
     def __init__(
         self,
         sandbox_key: str,
@@ -187,7 +194,7 @@ class UseSandbox:
 
         async for message in self._state.observer.stdin:
             if message is not None:
-                await sandbox.stream.write_in(message.encode('utf-8'))
+                await sandbox.stream.write_in(message.encode("utf-8"))
 
     async def output_listener(self, sandbox: DockerSandbox):
 
@@ -201,21 +208,26 @@ class UseSandbox:
             raise BuildStageError("Can't attach if no observer was given")
 
         while message := await sandbox.stream.read_out():
-            data = message.data.decode('utf-8')
-            await self._state.observer.write_output(self.params.key, data, message.stream)
+            data = message.data.decode("utf-8")
+            await self._state.observer.write_output(
+                self.params.key, data, message.stream
+            )
 
     async def setup(self, state: BuildState) -> None:
         self._is_setup = True
         self._state = state
 
-        builder = SandboxBuilder() \
-            .with_limits(self.params.limits) \
-            .with_profile(self.params.profile) \
+        builder = (
+            SandboxBuilder()
+            .with_limits(self.params.limits)
+            .with_profile(self.params.profile)
             .add_files(*self.params.files)
+        )
 
         builder = functools.reduce(
             lambda b, m: b.mount(state.shared[m.key], m.bind, m.readonly),
-            self.params.mounts, builder
+            self.params.mounts,
+            builder,
         )
 
         self._sandbox = await builder.create(state.executor)
@@ -224,8 +236,12 @@ class UseSandbox:
             if state.observer is None:
                 raise BuildStageError("Can't attach if no observer was given")
 
-            self._output_listener_task = asyncio.create_task(self.output_listener(self._sandbox))
-            self._input_listener_task = asyncio.create_task(self.input_listener(self._sandbox))
+            self._output_listener_task = asyncio.create_task(
+                self.output_listener(self._sandbox)
+            )
+            self._input_listener_task = asyncio.create_task(
+                self.input_listener(self._sandbox)
+            )
 
         await self._sandbox.wait()
 

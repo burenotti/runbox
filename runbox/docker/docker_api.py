@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import PosixPath
 import uuid
 from contextlib import asynccontextmanager, suppress
 from typing import Callable, Sequence
@@ -12,7 +13,7 @@ from .mount import Mount
 from .utils import write_files
 
 __all__ = [
-    'DockerExecutor',
+    "DockerExecutor",
 ]
 
 
@@ -41,31 +42,35 @@ class DockerExecutor:
     ) -> DockerSandbox:
 
         config = {
-            'Image': profile.image,
-            'Cmd': profile.cmd(files or []),
-            'Memory': limits.memory_bytes,
-            'WorkingDir': profile.workdir.as_posix(),
-            'User': profile.user,
-            'AttachStdin': True,
-            'AttachStdout': True,
-            'AttachStderr': True,
-            'Tty': False,
-            'OpenStdin': True,
-            'StdinOnce': False,
-            'OomKillDisable': False,
-            'HostConfig': {
+            "Image": profile.image,
+            "Cmd": profile.cmd(files or []),
+            "Memory": limits.memory_bytes,
+            "User": profile.user,
+            "AttachStdin": True,
+            "AttachStdout": True,
+            "AttachStderr": True,
+            "Tty": False,
+            "OpenStdin": True,
+            "StdinOnce": False,
+            "OomKillDisable": False,
+            "HostConfig": {
                 "Mounts": [mount.dump() for mount in mounts or []] or None,
-            }
+            },
         }
+        if profile.workdir:
+            config["WorkingDir"] = profile.workdir.as_posix()
+
+        if profile.user:
+            config["User"] = profile.user
+
         name = self.name_factory()
-        task = self.docker_client.containers.create(
-            config, name=name)
+        task = self.docker_client.containers.create(config, name=name)
 
         container = await asyncio.wait_for(task, timeout)
         if files:
             await write_files(
                 container=container,
-                directory=profile.workdir,
+                directory=profile.workdir or PosixPath("/"),
                 files=files,
             )
 
@@ -75,7 +80,7 @@ class DockerExecutor:
     async def workdir(
         self,
         name: str = None,
-        driver: str = 'local',
+        driver: str = "local",
         timeout: int = 5,
     ):
         """
@@ -92,10 +97,15 @@ class DockerExecutor:
 
         volume = None
         try:
-            volume = await asyncio.wait_for(self.docker_client.volumes.create({
-                'Name': name,
-                'Driver': driver,
-            }), timeout)
+            volume = await asyncio.wait_for(
+                self.docker_client.volumes.create(
+                    {
+                        "Name": name,
+                        "Driver": driver,
+                    }
+                ),
+                timeout,
+            )
             yield volume
         finally:
             if volume:

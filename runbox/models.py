@@ -6,10 +6,7 @@ from typing import Literal, Sequence, cast
 
 from pydantic import BaseModel, Field
 
-__all__ = [
-    'File', 'DockerProfile',
-    'Limits', 'SandboxState'
-]
+__all__ = ["File", "DockerProfile", "Limits", "SandboxState"]
 
 from runbox.utils import Placeholder
 
@@ -28,23 +25,26 @@ class File(BaseModel):
         :return: either unmodified binary or text encoded in utf-8
         :rtype: str | bytes
         """
-        if self.type == 'binary':
+        if self.type == "binary":
             return self.content
         else:
-            return self.content.encode('utf-8')
+            return self.content.encode("utf-8")
 
 
 class DockerProfile(BaseModel):
     image: str
-    workdir: pathlib.Path
-    user: str
-    cmd_template: list[str | types.EllipsisType | Placeholder] = Field(..., exclude=True)
+    workdir: pathlib.Path | None = None
+    user: str | None = None
+    cmd_template: list[str | types.EllipsisType | Placeholder] | None = Field(None, exclude=True)
 
     class Config:
         arbitrary_types_allowed = True
         frozen = True
 
-    def cmd(self, files: Sequence[File]) -> list[str]:
+    def cmd(self, files: Sequence[File]) -> list[str] | None:
+        if self.cmd_template is None:
+            return None
+
         cmd = self.cmd_template.copy()
         unused = [True] * len(files)
         for idx, arg in enumerate(cmd):
@@ -53,13 +53,17 @@ class DockerProfile(BaseModel):
                     cmd[idx] = files[arg.arg_num].name
                     unused[arg.arg_num] = False
                 except IndexError:
-                    err = ValueError(f"Cannot bind argument {arg.arg_num}. "
-                                     f"Have only {len(files)} files")
+                    err = ValueError(
+                        f"Cannot bind argument {arg.arg_num}. "
+                        f"Have only {len(files)} files"
+                    )
                     raise err from None
 
         if Ellipsis in cmd:
             idx = cmd.index(Ellipsis)
-            cmd[idx:idx + 1] = itertools.compress((file.name for file in files), unused)
+            cmd[idx: idx + 1] = itertools.compress(
+                (file.name for file in files), unused
+            )
 
         return cast(list[str], cmd)
 
