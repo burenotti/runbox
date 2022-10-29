@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "language": "python",
+    "version": "3.10"
+  },
+  "pipeline": {
+    "run": {
+      "use_sandbox": {
+        "key": "python",
+        "profile": {
+          "image": "sandbox:python-3.10",
+          "cmd_template": ["python", "./main.py"]
+        },
+        "files": [
+          {
+            "name": "/sandbox/main.py",
+            "content": "print('Hello, world!')"
+          }
+        ]
+      }
+    }
+  }
+}

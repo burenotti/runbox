@@ -1,0 +1,48 @@
+{
+  "meta": {
+  },
+  "pipeline": {
+    "build": {
+      "use_volume": {
+        "key": "build"
+      },
+      "use_sandbox": {
+        "key": "builder",
+        "profile": {
+          "image": "sandbox:gcc-10"
+        },
+        "mounts": [
+          {
+            "key": "build",
+            "bind": "/sandbox"
+          }
+        ],
+        "files": [
+          {
+            "name": "/sandbox/main.cpp",
+            "path": "./examples/src/dividers.cpp"
+          }
+        ]
+      }
+    },
+    "run": {
+      "use_sandbox": {
+        "key": "runner",
+        "profile": {
+          "image": "ubuntu:latest",
+          "cmd_template": ["/tmp/main"]
+        },
+        "limits": {
+          "time": 5
+        },
+        "attach": true,
+        "mounts": [
+          {
+            "key": "build",
+            "bind": "/tmp"
+          }
+        ]
+      }
+    }
+  }
+}

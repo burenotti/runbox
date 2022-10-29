@@ -5,6 +5,7 @@ from pathlib import Path
 
 import aiodocker
 import pytest
+from aiodocker import DockerError
 
 from runbox.docker import DockerExecutor
 from runbox.docker.mount import Mount
@@ -244,3 +245,37 @@ async def test_code_timeout_kill(
             await container.wait()
             state = await container.state()
     assert state.cpu_limit, 'Must be killed because of timeout'
+
+
+@pytest.mark.asyncio
+async def test_can_create_container_with_profile_specifying_only_image(
+    docker_executor: DockerExecutor,
+    docker_client: aiodocker.Docker,
+):
+    try:
+        await docker_client.images.inspect('alpine:latest')
+        has_image = True
+    except DockerError:
+        has_image = False
+
+    if not has_image:
+        await docker_client.images.pull('alpine:latest')
+
+    sandbox = await docker_executor.create_container(
+        profile=DockerProfile(image="alpine:latest")
+    )
+
+    container = await docker_client.containers.create({
+        "Image": "alpine:latest",
+    })
+
+    expected_info = (await container.show())['Config']
+
+    info = (await sandbox._container.show())['Config']
+
+    await sandbox.delete()
+    await container.delete()
+
+    assert expected_info["Cmd"] == info["Cmd"]
+    assert expected_info["WorkingDir"] == info["WorkingDir"]
+    assert expected_info["User"] == info["User"]

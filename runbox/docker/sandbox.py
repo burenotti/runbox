@@ -42,7 +42,7 @@ class DockerSandbox:
         self._timeout = timeout
         self._cpu_limit: bool = False
         self._timeout_task: asyncio.Task | None = None
-        self._stream: Stream | None = None
+        self._stream: StreamWrapper | None = None
 
     @property
     def stream(self) -> SandboxIO | None:
@@ -84,7 +84,7 @@ class DockerSandbox:
             stdin=True, stdout=True, stderr=True, logs=True,
             detach_keys="ctrl-c"
         )
-        self._stream = stream
+        self._stream = StreamWrapper(stream)
 
         if stdin:
             await stream.write_in(stdin)
