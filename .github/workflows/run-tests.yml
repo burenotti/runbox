@@ -49,7 +49,7 @@ jobs:
           sudo apt-get update
           sudo chmod a+r /etc/apt/keyrings/docker.gpg
           sudo apt-get update
-          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin jq
       - name: Setup sandbox images
         run: |
           docker build -t sandbox:python-3.10 ./tests/images/Python3.10
@@ -66,3 +66,19 @@ jobs:
         run: poetry install
       - name: Run tests with pytest
         run: pytest ./tests/ -vv
+      - name: Run Coverage
+        run: |
+          coverage run --source=runbox --module pytest --verbose .
+          coverage json
+          cat coverage.json | jq -r ".totals.percent_covered_display" >> $GITHUB_ENV
+      - name: Create Coverage Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 5bc85bcd4f4ea44d4a8d329d51a1310d
+          filename: .json
+          label: Coverage
+          message: ${{ env.COVERAGE }}
+          valColorRange: ${{ env.COVERAGE }}
+          minColorRange: 0
+          maxColorRange: 100
