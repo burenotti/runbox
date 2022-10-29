@@ -52,6 +52,7 @@ jobs:
           sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin jq
       - name: Setup sandbox images
         run: |
+          docker pull ubuntu:latest
           docker build -t sandbox:python-3.10 ./tests/images/Python3.10
           docker build -t sandbox:gcc-10 ./tests/images/gcc10
       - name: Install Poetry
