@@ -70,14 +70,14 @@ jobs:
         run: |
           coverage run --source=runbox --module pytest --verbose --suppress-tests-failed-exit-code .
           coverage json
-          echo "COVERAGE=$(cat coverage.json | jq -r '.totals.percent_covered_display')" >> $GITHUB_ENV
+          echo "COVERAGE=$(cat coverage.json | jq -r '.totals.percent_covered_display')%" >> $GITHUB_ENV
       - name: Create Coverage Badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: 5bc85bcd4f4ea44d4a8d329d51a1310d
           filename: RunboxBadges.json
-          label: Coverage
+          label: Code coverage
           message: ${{ env.COVERAGE }}
           valColorRange: ${{ env.COVERAGE }}
           minColorRange: 0
