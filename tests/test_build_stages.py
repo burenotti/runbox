@@ -6,7 +6,7 @@ from aiodocker import DockerError
 
 from runbox import DockerExecutor
 from runbox.build_stages import UseSandbox, BasePipeline, BuildState
-from runbox.build_stages.stages import StreamType
+from runbox.build_stages.stages import StreamType, LoadableFile
 from runbox.models import DockerProfile, File, Limits
 
 
@@ -56,7 +56,7 @@ def pipeline() -> BasePipeline:
                 workdir=Path('/sandbox'),
             ),
             files=[
-                File(
+                LoadableFile(
                     name='main.py',
                     content='print("Hello, world!")\n'
                 )
@@ -93,7 +93,7 @@ async def test_useSandbox_can_run_sandbox(executor):
             workdir=Path('/sandbox'),
         ),
         files=[
-            File(
+            LoadableFile(
                 name='main.py',
                 content='print("Hello, world!")\n'
             )
@@ -139,7 +139,7 @@ async def test_useSandbox_correctly_observes_output(executor):
             workdir=Path('/sandbox'),
         ),
         files=[
-            File(
+            LoadableFile(
                 name='main.py',
                 content='print("Hello, world!")\n'
             )

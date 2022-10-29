@@ -14,7 +14,7 @@ from typing import (
     AsyncIterable,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator, root_validator
 
 from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
 from runbox.models import File, Limits, DockerProfile
@@ -40,6 +40,7 @@ def default_stages() -> dict[str, str]:
 
 
 class BuildStageError(Exception):
+
     def __init__(self, message: str):
         super(BuildStageError, self).__init__(message)
 
@@ -54,6 +55,7 @@ class StreamType(int, Enum):
 
 
 class Observer(Protocol):
+
     @property
     def stdin(self) -> AsyncIterable[str]:
         ...
@@ -95,6 +97,7 @@ class BuildStage(Protocol):
 
 
 class WriteFiles:
+
     def __init__(
         self,
         sandbox_key: str,
@@ -156,12 +159,28 @@ class SandboxMount(BaseModel):
     readonly: bool = False
 
 
+class LoadableFile(File):
+    path: Path | None = None
+
+    @root_validator(pre=True)
+    def load_content(cls, v: dict[str, Any]):
+        if (v.get('path') is not None) == (v.get('content') is not None):
+            raise ValueError("Either 'path' or 'content' must be specified, not both")
+
+        if v.get('path') is not None:
+            v['path'] = Path(v['path'])
+            mode = 'r' if v.get('content_type', 'text') == 'text' else 'rb'
+            with v['path'].open(mode) as file:
+                v['content'] = file.read()
+        return v
+
+
 class UseSandbox:
     class Params(BaseModel):
         key: str
         profile: DockerProfile
         limits: Limits = Limits()
-        files: list[File] = []
+        files: list[LoadableFile] = []
         mounts: list[SandboxMount] = []
         attach: bool = True
 

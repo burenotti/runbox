@@ -9,11 +9,11 @@
         "key": "python",
         "profile": {
           "image": "sandbox:python-3.10",
-          "cmd_template": ["python", "main.py"]
+          "cmd_template": ["python", "./main.py"]
         },
         "files": [
           {
-            "name": "main.py",
+            "name": "/sandbox/main.py",
             "content": "print('Hello, world!')"
           }
         ]

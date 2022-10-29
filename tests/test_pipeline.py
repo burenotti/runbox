@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from runbox import DockerExecutor
-from runbox.build_stages import BasePipeline
+from runbox.build_stages import BasePipeline, CompileAndRunPipeline
 from runbox.build_stages.pipeline_loaders import (
     load_stages, JsonPipelineLoader,
 )
@@ -82,3 +82,24 @@ async def test_pipeline_can_run_and_observe_code(
     await pipeline.execute_group('run')
 
     hello_world_observer.validate()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_multistage_build(
+    docker_executor: DockerExecutor,
+):
+    observer = TestSandboxObserver(stdin=['35\n'], expected_stdout='5 7 ')
+    pipeline: CompileAndRunPipeline = (
+        JsonPipelineLoader[CompileAndRunPipeline](
+            path=Path('./tests/gcc_multistage.json'),
+            stage_getter=lambda stage: load_stages(default_stages())[stage],
+            class_=CompileAndRunPipeline
+        )
+        .load()
+        .with_executor(docker_executor)
+        .with_observer(observer)
+    )
+    await pipeline.build()
+    await pipeline.run()
+    await pipeline.finalize()
+    observer.validate()
