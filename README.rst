@@ -1,7 +1,8 @@
 ======
 RunBox
 ======
-
+.. image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/burenotti/5bc85bcd4f4ea44d4a8d329d51a1310d/raw/RunboxBadges.json
+  :alt: Coverage Badge
 **RunBox** is an asynchronous library written in Python for compiling,
 running and testing an untrusted code in a safe docker environment.
 
