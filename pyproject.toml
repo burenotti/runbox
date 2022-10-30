@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "runbox"
-version = "0.6.1"
+version = "0.6.2"
 description = "Compile and run untrusted code in docker"
 authors = ["Burenin Artem <burenotti@gmail.com>"]
 license = "MIT"
