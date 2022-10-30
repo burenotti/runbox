@@ -31,6 +31,10 @@ PipelineType = TypeVar('PipelineType', bound=Pipeline, covariant=True)
 
 class PipelineLoader(Protocol[PipelineType]):
 
+    @property
+    def meta(self) -> dict[str, Any]:
+        ...
+
     def load(self) -> PipelineType:
         ...
 
@@ -52,10 +56,16 @@ class JsonPipelineLoader(Generic[PipelineType]):
         self.path = path
         self.class_ = class_
         self._schema: list[tuple[str, Type[BuildStage], BaseModel]] = []
+        self._meta: dict[str, Any] = {}
         self.load_schema()
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        return self._meta
 
     def load_schema(self) -> None:
         data = JsonPipelineSchema.parse_file(self.path)
+        self._meta = data.meta
 
         for group_name, group in data.pipeline.items():
             for stage_name, raw_params in group.items():
