@@ -26,16 +26,16 @@ def load_stages(stages_map: dict[str, str]) -> dict[str, Type[BuildStage]]:
     return stages
 
 
-PipelineType = TypeVar('PipelineType', bound=Pipeline, covariant=True)
+PipelineType = TypeVar('PipelineType', bound=Pipeline)
 
 
-class PipelineLoader(Protocol[PipelineType]):
+class PipelineLoader(Protocol):
 
     @property
     def meta(self) -> dict[str, Any]:
         ...
 
-    def load(self) -> PipelineType:
+    def fill(self, pipeline: PipelineType) -> PipelineType:
         ...
 
 
@@ -49,12 +49,11 @@ class JsonPipelineSchema(BaseModel):
     pipeline: dict[str, JsonBuildGroupSchema]
 
 
-class JsonPipelineLoader(Generic[PipelineType]):
+class JsonPipelineLoader:
 
-    def __init__(self, path: Path, class_: Type[PipelineType], stage_getter: StageGetter):
+    def __init__(self, path: Path, stage_getter: StageGetter):
         self.stage_getter = stage_getter
         self.path = path
-        self.class_ = class_
         self._schema: list[tuple[str, Type[BuildStage], BaseModel]] = []
         self._meta: dict[str, Any] = {}
         self.load_schema()
@@ -73,9 +72,11 @@ class JsonPipelineLoader(Generic[PipelineType]):
                 params = stage.Params.parse_obj(raw_params)
                 self._schema.append((group_name, stage, params))
 
-    def load(self) -> PipelineType:
-        pipeline = self.class_()
+    def fill(self, pipeline: PipelineType) -> PipelineType:
+
         for group, Stage, params in self._schema:
             pipeline.add_stages(group, Stage(params))
+
+        pipeline.update_meta(self._meta)
 
         return pipeline
