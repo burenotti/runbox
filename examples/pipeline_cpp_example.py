@@ -24,13 +24,12 @@ def get_stage(name: str):
 async def main():
     executor = DockerExecutor()
 
-    builder = JsonPipelineLoader[CompileAndRunPipeline](
+    loader = JsonPipelineLoader(
         path=Path('./src/cpp.json'),
-        class_=CompileAndRunPipeline,
         stage_getter=get_stage
     )
 
-    pipeline = builder.load()
+    pipeline = loader.fill(CompileAndRunPipeline())
     pipeline.with_executor(executor)
     pipeline.with_observer(ConsoleObserver())
 

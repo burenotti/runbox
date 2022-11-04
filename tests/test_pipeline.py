@@ -7,7 +7,7 @@ from runbox.build_stages import BasePipeline, CompileAndRunPipeline
 from runbox.build_stages.pipeline_loaders import (
     load_stages, JsonPipelineLoader,
 )
-from runbox.build_stages.stages import UseSandbox, UseVolume, default_stages
+from runbox.build_stages.stages import UseSandbox, UseVolume, default_stages, LoadableFile
 from runbox.models import DockerProfile, Limits, File
 from test_build_stages import TestSandboxObserver
 from test_docker import docker_executor
@@ -33,11 +33,10 @@ def test_can_load_default_stages():
 
 
 def test_can_load_pipeline_from_json():
-    pipeline: BasePipeline = JsonPipelineLoader[BasePipeline](
+    pipeline = JsonPipelineLoader(
         path=Path('./tests/python3.json'),
         stage_getter=lambda stage: load_stages(default_stages())[stage],
-        class_=BasePipeline
-    ).load()
+    ).fill(BasePipeline())
 
     expected_pipeline = BasePipeline() \
         .add_stages(
@@ -46,7 +45,7 @@ def test_can_load_pipeline_from_json():
             UseSandbox.Params(
                 key="python",
                 files=[
-                    File(
+                    LoadableFile(
                         name="main.py",
                         content="print('Hello, world!')"
                     )
@@ -63,7 +62,9 @@ def test_can_load_pipeline_from_json():
         )
     )
 
-    assert pipeline._groups['run'][0].params == expected_pipeline._groups['run'][0].params
+    expected_params = expected_pipeline._groups['run'].stages[0].params
+    actual_params = pipeline._groups['run'].stages[0].params
+    assert actual_params == expected_params
 
 
 @pytest.mark.asyncio
@@ -71,11 +72,10 @@ async def test_pipeline_can_run_and_observe_code(
     docker_executor: DockerExecutor,
     hello_world_observer: TestSandboxObserver,
 ):
-    pipeline = JsonPipelineLoader[BasePipeline](
+    pipeline = JsonPipelineLoader(
         path=Path('./tests/python3_simplified.json'),
         stage_getter=lambda stage: load_stages(default_stages())[stage],
-        class_=BasePipeline
-    ).load()
+    ).fill(BasePipeline())
 
     pipeline.with_executor(docker_executor)
     pipeline.with_observer(hello_world_observer)
@@ -89,13 +89,12 @@ async def test_pipeline_multistage_build(
     docker_executor: DockerExecutor,
 ):
     observer = TestSandboxObserver(stdin=['35\n'], expected_stdout='5 7 ')
-    pipeline: CompileAndRunPipeline = (
-        JsonPipelineLoader[CompileAndRunPipeline](
+    pipeline = (
+        JsonPipelineLoader(
             path=Path('./tests/gcc_multistage.json'),
             stage_getter=lambda stage: load_stages(default_stages())[stage],
-            class_=CompileAndRunPipeline
         )
-        .load()
+        .fill(CompileAndRunPipeline())
         .with_executor(docker_executor)
         .with_observer(observer)
     )
