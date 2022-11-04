@@ -7,10 +7,12 @@ from runbox.build_stages import BasePipeline, CompileAndRunPipeline
 from runbox.build_stages.pipeline_loaders import (
     load_stages, JsonPipelineLoader,
 )
-from runbox.build_stages.stages import UseSandbox, UseVolume, default_stages, LoadableFile
-from runbox.models import DockerProfile, Limits, File
-from test_build_stages import TestSandboxObserver
-from test_docker import docker_executor
+from runbox.build_stages.stages import (
+    UseSandbox, UseVolume,
+    default_stages, LoadableFile
+)
+from runbox.models import DockerProfile, Limits
+from test_build_stages import TestSandboxObserver  # type: ignore
 
 
 @pytest.fixture

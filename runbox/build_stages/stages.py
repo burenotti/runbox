@@ -7,7 +7,6 @@ from enum import Enum
 from pathlib import Path, PosixPath
 from typing import (
     Any,
-    Sequence,
     TypeVar,
     Protocol,
     AsyncContextManager,
@@ -16,19 +15,20 @@ from typing import (
 
 from pydantic import BaseModel, root_validator
 
-from runbox import DockerExecutor, SandboxBuilder, DockerSandbox, Mount
+from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
 from runbox.models import File, Limits, DockerProfile
-from runbox.proto import Sandbox
 
 __all__ = [
     "Observer",
     "UseSandbox",
     "UseVolume",
+    "WriteFiles",
     "SharedState",
     "BuildState",
     "BuildStage",
     "StreamType",
     "default_stages",
+    "LoadableFile",
 ]
 
 
