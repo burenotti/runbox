@@ -14,9 +14,9 @@ from typing import (
     AsyncIterable,
 )
 
-from pydantic import BaseModel, validator, root_validator
+from pydantic import BaseModel, root_validator
 
-from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
+from runbox import DockerExecutor, SandboxBuilder, DockerSandbox, Mount
 from runbox.models import File, Limits, DockerProfile
 from runbox.proto import Sandbox
 
@@ -97,26 +97,57 @@ class BuildStage(Protocol):
 
 
 class WriteFiles:
+    class Params(BaseModel):
+        key: str
+        file_keys: list[str]
+        volume: str
+        profile: DockerProfile = DockerProfile(
+            image="alpine:latest",
+            workdir=Path("/tmp"),
+        )
 
-    def __init__(
-        self,
-        sandbox_key: str,
-        directory: Path,
-        files: Sequence[File],
-    ):
-        self.sandbox_key = sandbox_key
-        self.directory = directory
-        self.files = files
+    def __init__(self, params: Params):
+        self._is_setup = False
+        self._is_disposed = False
+        self.params = params
+
+    @property
+    def is_setup(self) -> bool:
+        return self._is_setup
+
+    @property
+    def is_disposed(self) -> bool:
+        return self._is_disposed
+
+    @staticmethod
+    def get_files(keys: list[str], shared: SharedState) -> list[File]:
+        collected_files: list[File] = []
+        for key in keys:
+            if files := shared.get(key):
+                if isinstance(files, list) and all(isinstance(f, File) for f in files):
+                    collected_files.extend(files)
+                elif isinstance(files, File):
+                    collected_files.append(files)
+                else:
+                    raise TypeError("Value is not a file or list of files")
+            else:
+                raise KeyError(f"Key '{key}' is not in shared state")
+        return collected_files
 
     async def setup(self, state: BuildState) -> None:
-        sandbox: Sandbox = state.shared[self.sandbox_key]
-        await sandbox.write_files(self.directory, *self.files)
+        self._is_setup = True
+        files = self.get_files(self.params.file_keys, state.shared)
+        volume = state.shared[self.params.volume]
+        builder = SandboxBuilder() \
+            .with_profile(self.params.profile) \
+            .mount(volume, self.params.profile.workdir or '/', readonly=False) \
+            .add_files(*files)
+
+        async with await builder.create(state.executor):
+            pass
 
     async def dispose(self) -> None:
-        pass
-
-    def __repr__(self) -> str:
-        return f"Write into {self.sandbox_key} {[f.name for f in self.files]}"
+        self._is_disposed = True
 
 
 class UseVolume:
