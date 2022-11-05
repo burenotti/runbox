@@ -13,6 +13,7 @@ from runbox.build_stages.stages import (
 )
 from runbox.models import DockerProfile, Limits
 from test_build_stages import TestSandboxObserver  # type: ignore
+from test_docker import docker_executor
 
 
 @pytest.fixture

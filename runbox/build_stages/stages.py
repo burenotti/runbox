@@ -16,6 +16,7 @@ from typing import (
 from pydantic import BaseModel, root_validator
 
 from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
+from runbox.docker.docker_api import merge_profiles
 from runbox.models import File, Limits, DockerProfile
 
 __all__ = [
@@ -267,10 +268,13 @@ class UseSandbox:
         self._is_setup = True
         self._state = state
 
+        default_profile = await state.executor.get_default_profile(self.params.profile.image)
+        profile = merge_profiles(self.params.profile, default_profile)
+
         builder = (
             SandboxBuilder()
             .with_limits(self.params.limits)
-            .with_profile(self.params.profile)
+            .with_profile(profile)
             .add_files(*self.params.files)
         )
 

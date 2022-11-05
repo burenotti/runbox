@@ -1,7 +1,7 @@
 import asyncio
-from pathlib import PosixPath
 import uuid
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 from typing import Callable, Sequence
 
 from aiodocker import Docker
@@ -14,7 +14,12 @@ from .utils import write_files
 
 __all__ = [
     "DockerExecutor",
+    "merge_profiles",
 ]
+
+
+def merge_profiles(profile: DockerProfile, defaults: DockerProfile) -> DockerProfile:
+    return defaults.copy(update=profile.dict(exclude_unset=True))
 
 
 class DockerExecutor:
@@ -31,6 +36,16 @@ class DockerExecutor:
 
         self.docker_client = docker_client or Docker(url)
         self.name_factory = name_factory or (lambda: str(uuid.uuid4()))
+
+    async def get_default_profile(self, image: str) -> DockerProfile:
+        info = await self.docker_client.images.inspect(image)
+        config = info["ContainerConfig"]
+        return DockerProfile(
+            image=image,
+            workdir=Path(config["WorkingDir"]),
+            user=config["User"],
+            cmd_template=config["Cmd"],
+        )
 
     async def create_container(
         self,
@@ -70,7 +85,7 @@ class DockerExecutor:
         if files:
             await write_files(
                 container=container,
-                directory=profile.workdir or PosixPath("/"),
+                directory=profile.workdir or Path("/"),
                 files=files,
             )
 

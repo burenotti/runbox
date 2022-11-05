@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import enum
 import functools
@@ -32,6 +31,31 @@ class GroupWithStages(Group):
     stages: list[BuildStage]
 
 
+class StageResultStatus(str, enum.Enum):
+    failed = "failed"
+    done = "done"
+    canceled = "canceled"
+
+
+@dataclass
+class StageResult:
+    status: StageResultStatus
+    exception: Exception | None = field(default=None, kw_only=True)
+
+
+class GroupResultStatus(str, enum.Enum):
+    failed = "failed"
+    done = "done"
+    canceled = "canceled"
+
+
+@dataclass
+class GroupResult:
+    status: GroupResultStatus
+    stages_results: Sequence[StageResult]
+    exception: Exception | None = field(default=None, kw_only=True)
+
+
 class Pipeline(Protocol):
 
     @property
@@ -57,7 +81,7 @@ class Pipeline(Protocol):
     def add_stages(self, group: str, *stages: BuildStage) -> "Pipeline":
         ...
 
-    async def execute_group(self, group: str) -> None:
+    async def execute_group(self, group: str) -> GroupResult:
         ...
 
     async def finalize(self) -> None:
@@ -110,24 +134,40 @@ class BasePipeline:
 
         return self
 
-    async def execute_group(self, group: str) -> None:
+    async def execute_group(self, group: str) -> GroupResult:
         assert group in self._groups, f"No group with name \"{group}\" in pipeline"
         assert self.is_valid, "Pipeline state inconsistent: executor is None or has empty groups"
         assert all(not stage.is_setup for stage in self._groups[group].stages), "Some stages have been already setup"
         group_data = self._groups[group]
         assert group_data.status == GroupStatus.pending
+        stage_results: list[StageResult] = []
+        exception: Exception | None = None
 
         for stage in group_data.stages:
+            if exception is not None:  # If exception occurred, marks each not ran stage as canceled
+                stage_results.append(StageResult(StageResultStatus.canceled))
+                continue
             try:
                 await stage.setup(self.build_state)
+                result = StageResult(StageResultStatus.done)
             except Exception as e:
+                exception = e
+                result = StageResult(StageResultStatus.failed, exception=e)
                 group_data.status = GroupStatus.failed
                 await stage.dispose()
-                raise e
+            stage_results.append(result)
+        group_data.status = GroupStatus.done
+        return GroupResult(
+            status=GroupResultStatus.failed if exception else GroupResultStatus.done,
+            stages_results=stage_results,
+            exception=exception,
+        )
 
     async def finalize(self) -> None:
         first_exception: Exception | None = None
         for group in self._groups.values():
+            if group.status.pending:
+                group.status = GroupStatus.
             for stage in group.stages:
                 if stage.is_setup and not stage.is_disposed:
                     try:
@@ -154,11 +194,11 @@ class CompileAndRunPipeline(BasePipeline):
         self._build_group = build_group
         self._run_group = run_group
 
-    async def build(self) -> None:
-        await self.execute_group(self._build_group)
+    async def build(self) -> GroupResult:
+        return await self.execute_group(self._build_group)
 
-    async def run(self) -> None:
-        await self.execute_group(self._run_group)
+    async def run(self) -> GroupResult:
+        return await self.execute_group(self._run_group)
 
 
 @dataclass(slots=True, frozen=True)
@@ -177,10 +217,10 @@ class Finalize(AsyncTask):
     type: str = field(default="exec", init=False)
 
 
-class AsyncBasePipeline:
+class AsyncPipelineWrapper:
 
-    def __init__(self):
-        self._pipeline = BasePipeline()
+    def __init__(self, pipeline: Pipeline):
+        self._pipeline = pipeline
         self._task_queue: asyncio.Queue[AsyncTask] = asyncio.Queue()
         self._canceled: bool = False
         self._listener_task: asyncio.Task[None] = asyncio.create_task(self._listener())
@@ -200,12 +240,16 @@ class AsyncBasePipeline:
 
     @_handle.register
     async def _exec_group_async(self, group: str) -> None:
-        await self._pipeline.execute_group(group)
-        await self.on_group_done(group)
+        result = await self._pipeline.execute_group(group)
+        if result.status == GroupResultStatus.done:
+            await self.on_group_done(group, result)
+        else:
+            await self.on_group_failed(group, result)
 
     @_handle.register
     async def _finalize_async(self) -> None:
         await self._pipeline.finalize()
+
         await self.on_finalize()
         self._canceled = True
 
@@ -213,23 +257,23 @@ class AsyncBasePipeline:
     def meta(self) -> Mapping[str, Any]:
         return self.meta
 
-    def update_meta(self, meta: dict[str, Any]) -> "AsyncBasePipeline":
+    def update_meta(self, meta: dict[str, Any]) -> "AsyncPipelineWrapper":
         self._pipeline.update_meta(meta)
         return self
 
-    def with_executor(self, executor: DockerExecutor) -> "AsyncBasePipeline":
+    def with_executor(self, executor: DockerExecutor) -> "AsyncPipelineWrapper":
         self._pipeline.with_executor(executor)
         return self
 
-    def with_observer(self, observer: Observer) -> "AsyncBasePipeline":
+    def with_observer(self, observer: Observer) -> "AsyncPipelineWrapper":
         self._pipeline.with_observer(observer)
         return self
 
-    def with_initial_state(self, state: SharedState) -> "AsyncBasePipeline":
+    def with_initial_state(self, state: SharedState) -> "AsyncPipelineWrapper":
         self._pipeline.with_initial_state(state)
         return self
 
-    def add_stages(self, group: str, *stages: BuildStage) -> "AsyncBasePipeline":
+    def add_stages(self, group: str, *stages: BuildStage) -> "AsyncPipelineWrapper":
         self._pipeline.add_stages(group, *stages)
         return self
 
@@ -242,8 +286,11 @@ class AsyncBasePipeline:
     async def on_finalize(self) -> None:
         ...
 
-    async def on_group_done(self, group: str) -> None:
+    async def on_group_done(self, group: str, result: GroupResult) -> None:
         ...
 
-    async def on_group_failed(self, group: str) -> None:
+    async def on_group_failed(self, group: str, result: GroupResult) -> None:
+        ...
+
+    async def on_group_canceled(self, group: str, result: GroupResult) -> None:
         ...
