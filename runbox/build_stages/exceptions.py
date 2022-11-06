@@ -25,11 +25,11 @@ class StageError(Generic[ParamsType], Exception):
         self.stage = stage
 
 
-class UseSandboxError(StageError[ParamsType]):
+class UseSandboxError(StageError["UseSandbox.Params"]):
     pass
 
 
-class NonZeroExitCodeError(UseSandboxError[ParamsType]):
+class NonZeroExitCodeError(UseSandboxError):
 
     def __init__(
         self, exit_code: int,
@@ -41,7 +41,7 @@ class NonZeroExitCodeError(UseSandboxError[ParamsType]):
         super().__init__(message, key, params, stage)
 
 
-class CpuLimitError(UseSandboxError[ParamsType]):
+class CpuLimitError(UseSandboxError):
 
     def __init__(
         self, limits: Limits,
@@ -53,7 +53,7 @@ class CpuLimitError(UseSandboxError[ParamsType]):
         super().__init__(message, key, params, stage)
 
 
-class MemoryLimitError(UseSandboxError[ParamsType]):
+class MemoryLimitError(UseSandboxError):
 
     def __init__(
         self, limits: Limits,

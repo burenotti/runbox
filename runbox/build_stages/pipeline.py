@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import enum
 import functools
@@ -6,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Protocol, Mapping, Any, Sequence
 
 from runbox import DockerExecutor
+from runbox.build_stages.exceptions import StageError
 from runbox.build_stages.stages import (
     Observer, SharedState,
     BuildStage, BuildState
@@ -199,9 +199,12 @@ class AsyncBasePipeline:
         raise ValueError("Task of this type is not supported")
 
     @_handle.register
-    async def _exec_group_async(self, group: str) -> None:
-        await self._pipeline.execute_group(group)
-        await self.on_group_done(group)
+    async def _exec_group_async(self, group: ExecGroup) -> None:
+        try:
+            await self._pipeline.execute_group(group.group)
+            await self.on_group_done(group.group)
+        except StageError as e:
+            await self.on_group_failed(group.group)
 
     @_handle.register
     async def _finalize_async(self) -> None:
@@ -235,6 +238,10 @@ class AsyncBasePipeline:
 
     async def execute_group(self, group: str) -> None:
         await self._task_queue.put(ExecGroup(group))
+
+    async def terminate(self) -> None:
+        self._listener_task.cancel()
+        await self._pipeline.finalize()
 
     async def finalize(self) -> None:
         await self._task_queue.put(Finalize())

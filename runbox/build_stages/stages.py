@@ -17,7 +17,7 @@ from pydantic import BaseModel, root_validator
 
 from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
 from runbox.models import File, Limits, DockerProfile
-from .exceptions import NonZeroExitCodeError, MemoryLimitError, CpuLimitError
+from .exceptions import NonZeroExitCodeError, MemoryLimitError, CpuLimitError, UseSandboxError
 
 __all__ = [
     "Observer",
@@ -38,12 +38,6 @@ def default_stages() -> dict[str, str]:
         "use_sandbox": "runbox.build_stages:UseSandbox",
         "use_volume": "runbox.build_stages:UseVolume",
     }
-
-
-class BuildStageError(Exception):
-
-    def __init__(self, message: str):
-        super(BuildStageError, self).__init__(message)
 
 
 T = TypeVar("T")
@@ -238,10 +232,12 @@ class UseSandbox:
             raise  # Todo...
 
         if not self._state:
-            raise BuildStageError("Listener was called before setup")
+            raise UseSandboxError("Listener was called before setup",
+                                  self.params.key, self.params, self)
 
         if self._state.observer is None:
-            raise BuildStageError("Can't attach if no observer was given")
+            raise UseSandboxError("Can't attach if no observer was given",
+                                  self.params.key, self.params, self)
 
         async for message in self._state.observer.stdin:
             if message is not None:
@@ -253,10 +249,12 @@ class UseSandbox:
             raise  # Todo...
 
         if not self._state:
-            raise BuildStageError("Listener was called before setup")
+            raise UseSandboxError("Listener was called before setup",
+                                  self.params.key, self.params, self)
 
         if self._state.observer is None:
-            raise BuildStageError("Can't attach if no observer was given")
+            raise UseSandboxError("Can't attach if no observer was given",
+                                  self.params.key, self.params, self)
 
         while message := await sandbox.stream.read_out():
             data = message.data.decode("utf-8")
@@ -285,7 +283,8 @@ class UseSandbox:
         await self._sandbox.run()
         if self.params.attach:
             if state.observer is None:
-                raise BuildStageError("Can't attach if no observer was given")
+                raise UseSandboxError("Can't attach if no observer was given",
+                                      self.params.key, self.params, self)
 
             self._output_listener_task = asyncio.create_task(
                 self.output_listener(self._sandbox)
@@ -299,13 +298,13 @@ class UseSandbox:
         result = await self._sandbox.state()
 
         if result.memory_limit:
-            raise MemoryLimitError[UseSandbox.Params](self.params.limits, self.params.key, self.params, self)
+            raise MemoryLimitError(self.params.limits, self.params.key, self.params, self)
 
         if result.cpu_limit:
-            raise CpuLimitError[UseSandbox.Params](self.params.limits, self.params.key, self.params, self)
+            raise CpuLimitError(self.params.limits, self.params.key, self.params, self)
 
         if result.exit_code != 0:
-            raise NonZeroExitCodeError[UseSandbox.Params](result.exit_code, self.params.key, self.params, self)
+            raise NonZeroExitCodeError(result.exit_code, self.params.key, self.params, self)
 
         self._state = state
         state.shared[self.params.key] = self._sandbox
