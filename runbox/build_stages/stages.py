@@ -17,6 +17,7 @@ from pydantic import BaseModel, root_validator
 
 from runbox import DockerExecutor, SandboxBuilder, DockerSandbox
 from runbox.models import File, Limits, DockerProfile
+from .exceptions import NonZeroExitCodeError, MemoryLimitError, CpuLimitError
 
 __all__ = [
     "Observer",
@@ -78,7 +79,7 @@ class BuildStage(Protocol):
     class Params(BaseModel):
         pass
 
-    def __init__(self, params: BaseModel):
+    def __init__(self, params: Params):
         ...
 
     @property
@@ -294,6 +295,17 @@ class UseSandbox:
             )
 
         await self._sandbox.wait()
+
+        result = await self._sandbox.state()
+
+        if result.memory_limit:
+            raise MemoryLimitError[UseSandbox.Params](self.params.limits, self.params.key, self.params, self)
+
+        if result.cpu_limit:
+            raise CpuLimitError[UseSandbox.Params](self.params.limits, self.params.key, self.params, self)
+
+        if result.exit_code != 0:
+            raise NonZeroExitCodeError[UseSandbox.Params](result.exit_code, self.params.key, self.params, self)
 
         self._state = state
         state.shared[self.params.key] = self._sandbox

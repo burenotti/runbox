@@ -6,8 +6,9 @@ from aiodocker import DockerError
 
 from runbox import DockerExecutor
 from runbox.build_stages import UseSandbox, BasePipeline, BuildState
+from runbox.build_stages.exceptions import NonZeroExitCodeError, MemoryLimitError, CpuLimitError
 from runbox.build_stages.stages import StreamType, LoadableFile
-from runbox.models import DockerProfile, File, Limits
+from runbox.models import DockerProfile, Limits
 
 
 class TestSandboxObserver:
@@ -152,3 +153,97 @@ async def test_useSandbox_correctly_observes_output(executor):
     await stage.setup(state)
     await stage.dispose()
     observer.validate()
+
+
+@pytest.mark.asyncio
+async def test_useSandbox_raises_on_nonzero_exitcode(executor):
+    state = BuildState(
+        executor=executor,
+        shared={}
+    )
+    stage = UseSandbox(UseSandbox.Params(
+        key='sandbox',
+        profile=DockerProfile(
+            image='sandbox:python-3.10',
+            cmd_template=['python', 'main.py'],
+            user='sandbox',
+            workdir=Path('/sandbox'),
+        ),
+        files=[
+            LoadableFile(
+                name='main.py',
+                content='Счёт древних шизов'  # Provides syntax error,
+            )
+        ],
+        limits=Limits(),
+        mounts=[],
+        attach=False,
+    ))
+
+    with pytest.raises(NonZeroExitCodeError):
+        await stage.setup(state)
+
+    await stage.dispose()
+
+
+@pytest.mark.asyncio
+async def test_useSandbox_raises_on_memory_limit(executor):
+    state = BuildState(
+        executor=executor,
+        shared={}
+    )
+    stage = UseSandbox(UseSandbox.Params(
+        key='sandbox',
+        profile=DockerProfile(
+            image='sandbox:python-3.10',
+            cmd_template=['python', 'main.py'],
+            user='sandbox',
+            workdir=Path('/sandbox'),
+        ),
+        files=[
+            LoadableFile(
+                name='main.py',
+                content='a = [i for i in range(10**10)]'  # Provides memory limit,
+            )
+        ],
+        limits=Limits(
+            memory_mb=256,
+        ),
+        mounts=[],
+        attach=False,
+    ))
+
+    with pytest.raises(MemoryLimitError):
+        await stage.setup(state)
+
+    await stage.dispose()
+
+@pytest.mark.asyncio
+async def test_useSandbox_raises_on_cpu_limit(executor):
+    state = BuildState(
+        executor=executor,
+        shared={}
+    )
+    stage = UseSandbox(UseSandbox.Params(
+        key='sandbox',
+        profile=DockerProfile(
+            image='sandbox:python-3.10',
+            cmd_template=['python', 'main.py'],
+            user='sandbox',
+            workdir=Path('/sandbox'),
+        ),
+        files=[
+            LoadableFile(
+                name='main.py',
+                content='import time; time.sleep(100)'  # Provides cpu limit,
+            )
+        ],
+        limits=Limits(),
+        mounts=[],
+        attach=False,
+    ))
+
+    with pytest.raises(CpuLimitError):
+        await stage.setup(state)
+
+    await stage.dispose()
